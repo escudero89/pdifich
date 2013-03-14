@@ -43,12 +43,30 @@ void guia1_eje1() {
 
 	// Y lo guardamos (el *3 es por RGB de 8 bits)
 	// Tamanho= 54 bytes (cabezera) + [(64 * 3)^2 * 3] = 110.646 bytes = 110.6 Kbytes
-	imagen_modificada.save("guia1_eje1_subimagen.bmp");
+	imagen_modificada.save("resultados/guia1_eje1_subimagen.bmp");
+
+
+}
+void guia1_eje2() {
+
+	CImg<unsigned char> imagen_desde_archivo("../../img/orion.jpg");
+	CImg<unsigned char> imagen_desde_archivo2("../../img/lenna.gif");
+
+	// Me tira informacion varia, no se bien que hace stats porque no me anda :_
+	imagen_desde_archivo.print();
+	
+	// Anexamos las imagenes
+	CImgList<unsigned char> compartido(imagen_desde_archivo, imagen_desde_archivo2);
+
+	CImgDisplay ventana(compartido, "Imagenes Compartidas", 0);
+
+	while (!ventana.is_closed() && !ventana.is_keyQ()) { }
+
 }
 
 int main(int argc, char *argv[]) {
 
-	guia1_eje1();
+	guia1_eje2();
 
 	return 0;
 }
