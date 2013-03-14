@@ -14,9 +14,9 @@ void guia1_eje1() {
  	// coordenadas para la subimagen
 	unsigned int 
 		img_width = 64,
-		x_min = 70,
+		x_min = 80,
 		x_max = x_min + img_width,
-		y_min = 40,
+		y_min = 30,
 		y_max = y_min + img_width;
 
 	// Pixel values are stored first along the X-axis, then the Y-axis, then the Z-axis, then the C-axis :
@@ -40,6 +40,10 @@ void guia1_eje1() {
 
 	// Mostramos ventana
 	while (!ventana.is_closed() && !ventana2.is_closed() && !ventana2.is_keyQ() && !ventana.is_keyQ()) { }
+
+	// Y lo guardamos (el *3 es por RGB de 8 bits)
+	// Tamanho= 54 bytes (cabezera) + [(64 * 3)^2 * 3] = 110.646 bytes = 110.6 Kbytes
+	imagen_modificada.save("guia1_eje1_subimagen.bmp");
 }
 
 int main(int argc, char *argv[]) {
