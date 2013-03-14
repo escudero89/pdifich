@@ -13,22 +13,25 @@ void guia1_eje1() {
  
  	// coordenadas para la subimagen
 	unsigned int 
-		x_min = ,
-		x_max = ,
-		y_min = ,
-		y_max = ;
+		img_width = 64,
+		x_min = 70,
+		x_max = x_min + img_width,
+		y_min = 40,
+		y_max = y_min + img_width;
 
 	// Pixel values are stored first along the X-axis, then the Y-axis, then the Z-axis, then the C-axis :
 	CImg<unsigned char> imagen_desde_archivo("../../img/cameraman.tif");
 
-	CImg<unsigned char> imagen_modificada(640, 480, 1, 1, 0);
+	CImg<unsigned char> imagen_modificada(img_width, img_width, 1, 1, 0);
 
 	// Recorremos la matriz de la imagen original
 	cimg_forXY(imagen_desde_archivo, x, y) {
-		if (x > 30) {
-			imagen_modificada(x, y) = imagen_desde_archivo(x, y);
+		if ((x >= x_min && x < x_max) && (y >= y_min && y < y_max)) {
+			imagen_modificada(x - x_min, y - y_min) = imagen_desde_archivo(x, y);
 		}
 	}
+
+	imagen_modificada.resize_tripleXY();
 
 	// Mostramos imagenes
 	CImgDisplay ventana(imagen_desde_archivo, "Imagen Original", 0);
