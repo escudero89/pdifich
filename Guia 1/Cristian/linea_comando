@@ -1,0 +1,1 @@
+g++ -o prog main.cpp -O0 -lm -lpthread -lX11
