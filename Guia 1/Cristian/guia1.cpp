@@ -3,6 +3,7 @@
 
 #include <CImg.h>
 
+#include <iostream>
 #include <string>
 #include <sstream>
 
@@ -154,9 +155,95 @@ void guia1_eje3() {
     }
 }
 
+/*te tiro una
+agarras el p0 y p1
+le calculas la pendiente
+le sacas el angulo
+rotas la imagen
+y haces un crop horizontal
+pero el x0,y0 te cambian en la imagen rotada
+tenes que rotarlos tambien
+porque si vos haces img.get_rotate(30).get_crop(x0,y0,xf,yf)
+te va a dar mal
+tenes que hacer
+img.get_rotate(30).get_crop(x0*cos(30),y0*sin(30),xf*cos(30),yf*sin(30))
+*/
+
+/// Ejercicio 4
+void guia1_eje4() {
+	
+	CImg<unsigned char> matriz(256, 256),
+		matriz_100(100, 100);
+
+	CImg<bool> matriz_bin(100, 100);
+
+	// Voy a recorrer la matriz y cambiar los colores por columnas
+	cimg_forXY(matriz, x, y) {
+		matriz(x, y) = x;
+
+		if (x < matriz_100.width() && y < matriz_100.height()) {
+			matriz_100(x, y) = x;
+			// Intercala 1 y 0 por columnas
+			matriz_bin(x, y) = (x % 2 == 0) ? 1 : 0;
+		}
+	}
+	
+	// Value normalization is disabled
+	CImgDisplay ventana2(matriz_100, "0] Mi matriz 100x100", 0);
+	// Value normalization is always performed
+	CImgDisplay ventana3(matriz_100, "1] Mi matriz 100x100", 1);
+	// Value normalization is performed once
+	CImgDisplay ventana4(matriz_100, "2] Mi matriz 100x100", 2);
+	// Value normalization depends on the pixel type of the data to display
+	CImgDisplay ventana5(matriz_100, "3] Mi matriz 100x100", 3);
+
+	CImgDisplay ventana_bin(matriz_bin, "Mi imagen binaria");
+
+	CImgDisplay ventana(matriz, "Mi matriz 256x256");
+
+	while (!ventana.is_closed() && !ventana.is_keyQ()) { }
+
+}
+
+/// Ultimo inciso, genera un circulo blanco en un cuadrado negro
+void guia1_eje4_circ(bool interactivo = false, unsigned int size = 256, unsigned int radius = 50) {
+
+	// Si pedimos al usuario informacion externa por consola
+	if (interactivo) {
+		std::cout << "Ingrese el tamanho N de la ventana NxN: ";
+		std::cin >> size;
+		std::cout << "Ingrese el radio del circulo: ";
+		std::cin >> radius;
+	}
+
+	CImg<bool> circ(size, size);
+
+	circ.fill(0);
+
+	int middle = (int) size / 2;
+
+	cimg_forXY(circ, x, y) {
+		int x_real = x - middle,
+			y_real = y - middle,
+			hipot = x_real * x_real + y_real * y_real;
+
+		if (hipot <= radius*radius) {
+			circ(x, y) = 1;
+		}
+	}
+
+	std::stringstream mensaje;
+	mensaje << "Mi circulo [radio: " << radius <<
+			"] en rectangulo [" << size << "x" << size << "].";
+
+	CImgDisplay ventana(circ, mensaje.str().c_str());
+
+	while (!ventana.is_closed() && !ventana.is_keyQ()) { }
+}
+
 int main(int argc, char *argv[]) {
 
-	guia1_eje3();
+	guia1_eje4_circ(true);
 
 	return 0;
 }
