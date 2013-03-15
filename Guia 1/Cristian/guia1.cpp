@@ -3,6 +3,9 @@
 
 #include <CImg.h>
 
+#include <string>
+#include <sstream>
+
 using namespace cimg_library;
 
 // Eje 5 => get_resize()
@@ -45,8 +48,9 @@ void guia1_eje1() {
 	// Tamanho= 54 bytes (cabezera) + [(64 * 3)^2 * 3] = 110.646 bytes = 110.6 Kbytes
 	imagen_modificada.save("resultados/guia1_eje1_subimagen.bmp");
 
-
 }
+
+/// Ejercicio 2
 void guia1_eje2() {
 
 	CImg<unsigned char> imagen_desde_archivo("../../img/orion.jpg");
@@ -64,9 +68,78 @@ void guia1_eje2() {
 
 }
 
+/// Ejercicio 3
+void guia1_eje3() {
+
+	CImg<float> imagen_modificada("../../img/lenna.gif"),
+		val_intensidad(500, 400, 1, 3, 0);
+
+	// La transformamos en escala de grises
+	cimg_forXY(imagen_modificada, x, y) {
+		// Sumo los valores de los 3 canales y lo promedio
+		unsigned int promedio = (imagen_modificada(x,y,0) 
+			+ imagen_modificada(x,y,1)
+			+ imagen_modificada(x,y,2)) / 3;
+
+		for (int v = 0; v<imagen_modificada.spectrum(); v++) {
+			imagen_modificada(x, y, v) = promedio;
+		}
+	}
+
+	// Guardamos la imagen original para evitar ser sobreescrita por texto
+	CImg<float> imagen_original(imagen_modificada);
+
+	const unsigned char white[] = { 255,255,255 }, gray[] = { 100,100,100 };
+
+	CImgDisplay ventana(imagen_modificada, "Imagen de intensidad (modificada)");
+	CImgDisplay ventana2(val_intensidad, "Grafico de intensidad");
+
+	while (!ventana.is_closed() && !ventana.is_keyQ() && !ventana2.is_keyQ()) { 
+		// Wait for any user event occuring on the current display
+		ventana.wait();
+
+		if (ventana.button() && ventana.mouse_y()>=0) {
+			const int primer_mouse_y = ventana.mouse_y();
+
+			std::stringstream ss;
+			ss << imagen_modificada(ventana.mouse_x(), ventana.mouse_y());
+
+			std::string mensaje = "Intensidad: " + ss.str(),
+				mensaje_esperar = "Se espera por otro click.";
+			
+			imagen_modificada.clear();
+			imagen_modificada = imagen_original;
+			imagen_modificada.draw_text(2,2,mensaje.c_str(), white, gray);
+			imagen_modificada.display(ventana);
+
+			// Avisamos que falta otro click
+			imagen_modificada.draw_text(2, 10, mensaje_esperar.c_str(), white, gray);
+			
+			const int y = ventana.mouse_y();
+/*
+			/// Esperamos otro punto
+			ventana.wait();
+
+			if (ventana.button() && y()>=0 &&) {*/
+				// Dibujamos el perfil de intensidad
+				val_intensidad.fill(0);
+				
+				// Obtenemos una linea de la imagen
+				CImg<float> subimagen(
+					imagen_original.get_crop(
+						0, y, 0,0,
+						imagen_original.width()-1, y, 0, 0));
+
+				val_intensidad.draw_graph(subimagen, white, 1, 1, 1, 255);
+				val_intensidad.display(ventana2);
+		//	}
+		}
+    }
+}
+
 int main(int argc, char *argv[]) {
 
-	guia1_eje2();
+	guia1_eje3();
 
 	return 0;
 }
