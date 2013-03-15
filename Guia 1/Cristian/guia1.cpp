@@ -94,45 +94,62 @@ void guia1_eje3() {
 	CImgDisplay ventana(imagen_modificada, "Imagen de intensidad (modificada)");
 	CImgDisplay ventana2(val_intensidad, "Grafico de intensidad");
 
+	// Inicializamos algunas variables fuera del while
+	bool first_click = false;
+	int primer_mouse_y, primer_mouse_x, y, x;
+
 	while (!ventana.is_closed() && !ventana.is_keyQ() && !ventana2.is_keyQ()) { 
 		// Wait for any user event occuring on the current display
 		ventana.wait();
-
+		y = ventana.mouse_y();
+		x = ventana.mouse_x();
+		
 		if (ventana.button() && ventana.mouse_y()>=0) {
-			const int primer_mouse_y = ventana.mouse_y();
-
 			std::stringstream ss;
-			ss << imagen_modificada(ventana.mouse_x(), ventana.mouse_y());
+			ss << imagen_modificada(x, y);
 
 			std::string mensaje = "Intensidad: " + ss.str(),
-				mensaje_esperar = "Se espera por otro click.";
+						mensaje_esperar = "Se espera por otro click.",
+						mensaje_exito = "Se ha generado un perfil con ese segmento.";
 			
 			imagen_modificada.clear();
 			imagen_modificada = imagen_original;
 			imagen_modificada.draw_text(2,2,mensaje.c_str(), white, gray);
 			imagen_modificada.display(ventana);
 
-			// Avisamos que falta otro click
-			imagen_modificada.draw_text(2, 10, mensaje_esperar.c_str(), white, gray);
-			
-			const int y = ventana.mouse_y();
-/*
-			/// Esperamos otro punto
-			ventana.wait();
+			if (!first_click) {
+				// Avisamos que falta otro click
+				imagen_modificada.draw_text(2, 20, mensaje_esperar.c_str(), white, gray);
+				
+				// Establecemos algunas variables antiguas
+				primer_mouse_y = y;
+				primer_mouse_x = x;
+				first_click = true;
 
-			if (ventana.button() && y()>=0 &&) {*/
+				/// Esperamos otro punto
+				imagen_modificada.display(ventana);
+				ventana.wait();
+			} else {
 				// Dibujamos el perfil de intensidad
 				val_intensidad.fill(0);
-				
+
 				// Obtenemos una linea de la imagen
 				CImg<float> subimagen(
 					imagen_original.get_crop(
-						0, y, 0,0,
-						imagen_original.width()-1, y, 0, 0));
+						primer_mouse_x, primer_mouse_y, 0,0,
+						x, y, 0, 0));
 
 				val_intensidad.draw_graph(subimagen, white, 1, 1, 1, 255);
 				val_intensidad.display(ventana2);
-		//	}
+
+				// Avisamos del exito
+				imagen_modificada = imagen_original;
+				imagen_modificada.draw_line(primer_mouse_x, primer_mouse_y, x, y, white);
+				imagen_modificada.draw_text(2, 2, mensaje_exito.c_str(), white, gray);
+				imagen_modificada.display(ventana);
+
+				first_click = false;
+			}
 		}
     }
 }
