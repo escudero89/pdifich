@@ -382,7 +382,34 @@ CImg<bool> dittering_image(CImg<float> base) {
 	return dittered_image;
 }
 
+void guia1_eje7_inciso_c() {
+	CImg<float> 
+		imagen_1("../../img/huang1.jpg"),
+		imagen_2("../../img/huang2.jpg"),
+		imagen_3("../../img/huang3.jpg");
+
+	CImgList<float> base(imagen_1, imagen_2, imagen_3);
+
+	imagen_1 = dittering_image(imagen_1);
+	imagen_2 = dittering_image(imagen_2);
+	imagen_3 = dittering_image(imagen_3);
+
+	base.push_back(imagen_1);
+	base.push_back(imagen_2);
+	base.push_back(imagen_3);
+
+	base.display("Imagenes puntilleadas");
+
+	imagen_1.get_normalize(0, 255).save("resultados/huang1_dittered.bmp");
+	imagen_2.get_normalize(0, 255).save("resultados/huang2_dittered.bmp");
+	imagen_3.get_normalize(0, 255).save("resultados/huang3_dittered.bmp");
+
+}
+
 void guia1_eje7() {
+		
+	/// INCISO A
+
 	CImg<float> imagen("../../img/lenna.gif"),
 		nueva;
 	
@@ -391,11 +418,32 @@ void guia1_eje7() {
 	CImgList<float> compartido(imagen, nueva);
 
 	compartido.display("Imagen original, y puntilleada");
+
+	/// INCISO B
+
+	// Matriz para degradado
+	CImg<unsigned char> degradado(256, 256);
+
+	// Voy a recorrer la matriz y cambiar los colores por columnas
+	cimg_forXY(degradado, x, y) {
+		degradado(x, y) = x;
+	}
+
+	// Le pasamos un puntillado a esta matriz
+	nueva = dittering_image(degradado);
+
+	compartido.assign(degradado, nueva);
+
+	compartido.display("Imagen degradado original, y puntilleado");
+
+	// INCISO C
+
 }
 
 int main(int argc, char *argv[]) {
 
-	guia1_eje7();
+	guia1_eje7_inciso_c();
+	//guia1_eje7();
 
 	return 0;
 }
