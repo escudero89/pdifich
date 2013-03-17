@@ -291,9 +291,38 @@ void guia1_eje4_circ(bool interactivo = false, unsigned int size = 256, unsigned
 	while (!ventana.is_closed() && !ventana.is_keyQ()) { }
 }
 
+/// Ejercicio 5
+void guia1_eje5() {
+
+	CImg<unsigned char> imagen("../../img/rmn.jpg"),
+		imagen_2,
+		imagen_3,
+		imagen_4,
+		imagen_5,
+		imagen_6,
+		imagen_7;
+
+	imagen_2 = imagen.get_resize_halfXY().get_resize_doubleXY();
+	imagen_3 = imagen_2.get_resize_halfXY().get_resize_doubleXY();
+	imagen_4 = imagen_3.get_resize_halfXY().get_resize_doubleXY();
+	imagen_5 = imagen_4.get_resize_halfXY().get_resize_doubleXY();
+	imagen_6 = imagen_5.get_resize_halfXY().get_resize_doubleXY();
+	imagen_7 = imagen_6.get_resize_halfXY().get_resize_doubleXY();
+
+	CImgList<unsigned char> compartido(
+		imagen, imagen_2, imagen_3, imagen_4, imagen_5, imagen_6, imagen_7);
+
+	CImgDisplay ventana(compartido, "Mi imagen de prueba", 1);
+
+	while (!ventana.is_closed() && !ventana.is_keyQ()) { }
+
+}
+
+// Ejercicio 6
+
 int main(int argc, char *argv[]) {
 
-	guia1_eje3();
+	guia1_eje5();
 
 	return 0;
 }
