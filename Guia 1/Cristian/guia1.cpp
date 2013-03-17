@@ -3,6 +3,8 @@
 
 #include <CImg.h>
 
+#include <vector>
+
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -14,6 +16,23 @@ using namespace cimg_library;
 
 // Eje 5 => get_resize()
 // Eje 6 => get_quantize()
+
+/// Transforma una imagen a escala de grises
+CImg<float> transform_to_grayscale(CImg<float> imagen) {
+	// La transformamos en escala de grises
+	cimg_forXY(imagen, x, y) {
+		// Sumo los valores de los 3 canales y lo promedio
+		unsigned int promedio = (imagen(x,y,0) 
+			+ imagen(x,y,1)
+			+ imagen(x,y,2)) / 3;
+
+		for (int v = 0; v<imagen.spectrum(); v++) {
+			imagen(x, y, v) = promedio;
+		}
+	}
+
+	return imagen;
+}
 
 /// Le pasas dos puntos, obtiene el angulo entre ellos en radianes
 float get_angle_from_points(float x0, float y0, float x1, float y1) {
@@ -99,16 +118,7 @@ void guia1_eje3() {
 		val_intensidad(500, 400, 1, 3, 0);
 
 	// La transformamos en escala de grises
-	cimg_forXY(imagen_modificada, x, y) {
-		// Sumo los valores de los 3 canales y lo promedio
-		unsigned int promedio = (imagen_modificada(x,y,0) 
-			+ imagen_modificada(x,y,1)
-			+ imagen_modificada(x,y,2)) / 3;
-
-		for (int v = 0; v<imagen_modificada.spectrum(); v++) {
-			imagen_modificada(x, y, v) = promedio;
-		}
-	}
+	imagen_modificada = transform_to_grayscale(imagen_modificada);
 
 	// Guardamos la imagen original para evitar ser sobreescrita por texto
 	CImg<float> imagen_original(imagen_modificada);
@@ -332,9 +342,60 @@ void guia1_eje6() {
 	compartido.display("Variacion a lo largo de distintas cuantizaciones (256 niveles a 1)...");
 }
 
+/// Ejercicio 7
+/// Le paso una imagen, retorna la misma con puntilleo
+CImg<bool> dittering_image(CImg<float> base) {
+	base = base.get_quantize(10).get_normalize(0, 9); // La dejamos en 10 niveles
+	// Y lo normalizamos entre 0 y 9
+
+	// Achico la imagen a 1/3 de su tamanho
+	base.resize(base.width()/3, base.height()/3);
+
+	// Tiene el triple de tamanho
+	CImg<bool> dittered_image(base.width() * 3, base.height() * 3);
+	dittered_image.fill(0);
+
+	// Creamos los patterns
+	bool patterns[][9] = 
+		{
+			{0, 0, 0, 0, 0, 0, 0, 0, 0},
+			{0, 0, 0, 0, 1, 0, 0, 0, 0},
+			{0, 0, 0, 1, 1, 0, 0, 0, 0},
+			{0, 0, 0, 1, 1, 0, 0, 1, 0},
+			{0, 0, 0, 1, 1, 1, 0, 1, 0},
+			{0, 0, 1, 1, 1, 1, 0, 1, 0},
+			{0, 0, 1, 1, 1, 1, 1, 1, 0},
+			{1, 0, 1, 1, 1, 1, 1, 1, 0},
+			{1, 0, 1, 1, 1, 1, 1, 1, 1},
+			{1, 1, 1, 1, 1, 1, 1, 1, 1}
+		};
+
+	// Vamos a ir recorriendo la imagen
+	cimg_forXY(base, x, y) {
+		for (unsigned int i = 0; i < 3; i++) {
+			for (unsigned int j=0; j < 3; j++) {
+				dittered_image(x*3 + i, y*3 + j) = patterns[(int) base(x,y)][i*3 + j];
+			}
+		}
+	}
+
+	return dittered_image;
+}
+
+void guia1_eje7() {
+	CImg<float> imagen("../../img/lenna.gif"),
+		nueva;
+	
+	nueva = dittering_image(transform_to_grayscale(imagen));
+
+	CImgList<float> compartido(imagen, nueva);
+
+	compartido.display("Imagen original, y puntilleada");
+}
+
 int main(int argc, char *argv[]) {
 
-	guia1_eje6();
+	guia1_eje7();
 
 	return 0;
 }
