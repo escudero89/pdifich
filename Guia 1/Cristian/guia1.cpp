@@ -319,10 +319,22 @@ void guia1_eje5() {
 }
 
 // Ejercicio 6
+void guia1_eje6() {
+	CImg<unsigned char> imagen("../../img/huang2.jpg");
+
+	CImgList<unsigned char> compartido;
+
+	// Voy disminuyendo la cantidad de bytes
+	for (unsigned int i = 8 ; i > 0 ; i--) {
+		compartido.push_back(imagen.get_quantize(pow(2, i)));
+	}
+
+	compartido.display("Variacion a lo largo de distintas cuantizaciones (256 niveles a 1)...");
+}
 
 int main(int argc, char *argv[]) {
 
-	guia1_eje5();
+	guia1_eje6();
 
 	return 0;
 }
