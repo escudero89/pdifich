@@ -3,14 +3,37 @@
 
 #include <CImg.h>
 
+#include <cmath>
 #include <iostream>
 #include <string>
 #include <sstream>
+
+#define PI 3.14159265359
 
 using namespace cimg_library;
 
 // Eje 5 => get_resize()
 // Eje 6 => get_quantize()
+
+/// Le pasas dos puntos, obtiene el angulo entre ellos en radianes
+float get_angle_from_points(float x0, float y0, float x1, float y1) {
+
+	// Desplazo al eje 0,0, trabajando sobre un vector normal (1,0) 
+	float vector_x = x1 - x0, 
+		vector_y = y1 - y0,
+		norm_x = 1,
+		norm_y = 0,
+
+		producto_punto = vector_x * norm_x + vector_y * norm_y,
+		producto_magnitud = sqrt(pow(vector_x, 2) + pow(vector_y, 2)) 
+			* sqrt(pow(norm_x, 2) + pow(norm_y, 2));
+
+	std::cout << "x0: " << x0 << " " << y0 <<" ; x1: "<<x1<<" "<<y1 << std::endl;
+
+	short is_negativo = (y0 <= y1) ? 1 : -1;
+
+	return is_negativo * acos(producto_punto/producto_magnitud);
+}
 
 /// Ejercicio 1 de la Guia 1
 void guia1_eje1() {
@@ -97,7 +120,7 @@ void guia1_eje3() {
 
 	// Inicializamos algunas variables fuera del while
 	bool first_click = false;
-	int primer_mouse_y, primer_mouse_x, y, x;
+	float primer_y, primer_x, y, x;
 
 	while (!ventana.is_closed() && !ventana.is_keyQ() && !ventana2.is_keyQ()) { 
 		// Wait for any user event occuring on the current display
@@ -123,8 +146,8 @@ void guia1_eje3() {
 				imagen_modificada.draw_text(2, 20, mensaje_esperar.c_str(), white, gray);
 				
 				// Establecemos algunas variables antiguas
-				primer_mouse_y = y;
-				primer_mouse_x = x;
+				primer_y = y;
+				primer_x = x;
 				first_click = true;
 
 				/// Esperamos otro punto
@@ -134,22 +157,49 @@ void guia1_eje3() {
 				// Dibujamos el perfil de intensidad
 				val_intensidad.fill(0);
 
+				// Rotamos la imagen para luego tomar el valor horizontal
+				float angulo_a_rotar = get_angle_from_points(primer_x, primer_y, x, y),
+					primer_x_r = primer_x * cos(angulo_a_rotar) + primer_y * sin(angulo_a_rotar),
+					primer_y_r = primer_x * -sin(angulo_a_rotar) + primer_y * cos(angulo_a_rotar),
+					x_r = x * cos(angulo_a_rotar) + y * sin(angulo_a_rotar),
+					y_r = x * -sin(angulo_a_rotar) + y * cos(angulo_a_rotar);
+
+				imagen_modificada = imagen_original;
+
+				// La idea es rotarlo para el otro lado
+				imagen_modificada = imagen_modificada.get_rotate(-angulo_a_rotar * 180 / PI);
+
+				std::cout << "Angulo: " << angulo_a_rotar << std::endl;
+				std::cout << "Y_r: " << y_r << std::endl;
+
 				// Obtenemos una linea de la imagen
 				CImg<float> subimagen(
-					imagen_original.get_crop(
-						primer_mouse_x, primer_mouse_y, 0,0,
-						x, y, 0, 0));
+					imagen_modificada.get_crop(
+						primer_x_r,
+						primer_y_r,
+						x_r,
+						y_r));
+
+				imagen_modificada.draw_line(
+					primer_x_r,
+					primer_y_r,
+					x_r,
+					y_r,
+					white);
+
+				CImg<float> imagen_test(imagen_modificada);
 
 				val_intensidad.draw_graph(subimagen, white, 1, 1, 1, 255);
 				val_intensidad.display(ventana2);
 
 				// Avisamos del exito
 				imagen_modificada = imagen_original;
-				imagen_modificada.draw_line(primer_mouse_x, primer_mouse_y, x, y, white);
+				imagen_modificada.draw_line(primer_x, primer_y, x, y, white);
 				imagen_modificada.draw_text(2, 2, mensaje_exito.c_str(), white, gray);
 				imagen_modificada.display(ventana);
 
 				first_click = false;
+				imagen_test.display();
 			}
 		}
     }
@@ -243,7 +293,7 @@ void guia1_eje4_circ(bool interactivo = false, unsigned int size = 256, unsigned
 
 int main(int argc, char *argv[]) {
 
-	guia1_eje4_circ(true);
+	guia1_eje3();
 
 	return 0;
 }
