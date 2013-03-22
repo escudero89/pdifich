@@ -59,5 +59,8 @@ int main(){
     img_modificada.display("Imagen Modificada");
     img_original.display("Imagen Original");
 
+    ///* 50 x 40 x 3 bytes + 54 = 6054 != 6134 ¿porque!? */
+    img_modificada.save("rostro.bmp");
+
    return 0;
 }
