@@ -244,7 +244,7 @@ void guia2_eje4() {
 void guia2_eje5() {
 	CImg<unsigned char> imagen("../../img/huang1.jpg");
 
-	CImgList<unsigned char> compilado(imagen, imagen.get_threshold(1));
+	CImgList<unsigned char> compilado(imagen, imagen.get_threshold(128));
 
 	compilado.display("Imagen original y con threshold");
 }
