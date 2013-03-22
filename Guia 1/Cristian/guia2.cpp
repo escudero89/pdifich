@@ -130,6 +130,7 @@ CImg<unsigned char> get_image_from_operations(
 						CImg<unsigned char> B, 
 						char ope='s') {
 
+	std::cout << A.width() << " " << B.width() << " | " << A.height() << " " << B.height() << std::endl;
 	// Si son distintos tamanios, explota
 	assert(!(A.width() != B.width() || A.height() != B.height()));
 
@@ -196,9 +197,53 @@ void guia2_eje3() {
 
 }
 
+// Invierte la imagen que le pasamos
+CImg<unsigned char> get_inversion(CImg<unsigned char> base) {
+
+	CImg<unsigned char> salida(base.width(), base.height());
+
+	cimg_forXYC(base, x, y, v) {
+		salida(x, y, v) = 255 - base(x, y, v);
+	}
+
+	return salida;
+}
+
+// Le pasamos una imagen y la cantidad de desplazamiento que queremos
+CImg<unsigned char> emboss(CImg<unsigned char> base, int move_x, int move_y = 0) {
+
+	// Sacamos su negativo
+	CImg<unsigned char> inverso(get_inversion(base));
+
+	// Si es negativo el desplazamiento o positivo, lo consideramos
+	int new_x0 = (move_x < 0) ? 0 : move_x,
+		new_x1 = (move_x > 0) ? base.width() : base.width() + move_x,
+
+		new_y0 = (move_y < 0) ? 0 : move_y,
+		new_y1 = (move_y > 0) ? base.height() : base.height() + move_y;
+
+	// Recortamos la base
+	base.crop(0, 0, base.width() - abs(move_x), base.height() - abs(move_y));
+
+	// Y la imagen invertida (pero la cortamos de forma desplazada)
+	inverso.crop(new_x0, new_y0, new_x1, new_y1);
+
+	// Y ahora la sumamos y lo retornamos
+	return get_image_from_operations(base, inverso, 's');
+
+}
+
+void guia2_eje4() {
+	CImg<unsigned char> imagen("../../img/huang1.jpg");
+
+	CImgList<unsigned char> compilado(imagen, emboss(imagen, -2, 3));
+
+	compilado.display("Imagen original y con un filtro de emboss");
+}
+
 int main(int argc, char *argv[]) {
 
-  guia2_eje3();
+  guia2_eje4();
 
   return 0;
 }
