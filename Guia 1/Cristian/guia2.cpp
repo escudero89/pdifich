@@ -164,11 +164,13 @@ CImg<unsigned char> get_image_from_operations(
 
 }
 
+// EJERCICIO 3
 void guia2_eje3() {
 
 	CImg<unsigned char> 
 		A("../../img/letras1.tif"),
-		B("../../img/huang2.jpg");
+		B("../../img/huang2.jpg"),
+		promedio;
 
 	CImgList<unsigned char> compilado(A, B, 
 		get_image_from_operations(A, B, 's'),
@@ -176,7 +178,22 @@ void guia2_eje3() {
 		get_image_from_operations(A.get_quantize(2).get_normalize(0,1), B, 'm'),
 		get_image_from_operations(A.get_quantize(2).get_normalize(0,1), B, 'd'));
 
-	compilado.display("A, B, suma, diferencia");
+	compilado.display("A, B, suma, diferencia, multiplicacion, division");
+
+	/// Creamos una imagen con ruido (usamos la huang2)
+	double sigma = sqrt(100);
+
+	promedio = B.get_noise(sigma);
+	// Queremos 50 imagenes 
+	for (unsigned int k = 0 ; k < 5 ; k++) {
+		// Las voy sumando varias veces (50 para ser exacto)
+		promedio = get_image_from_operations(promedio, B.get_noise(sigma), 's');
+	}
+
+	// Mostramos que quedo
+	compilado.assign(B, B.get_noise(sigma), promedio)
+		.display("Imagen original, con ruido, y promediada");
+
 }
 
 int main(int argc, char *argv[]) {
