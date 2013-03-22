@@ -5,6 +5,7 @@
 
 #include <vector>
 
+#include <cassert>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -48,6 +49,46 @@ CImg<int> get_image_transformed(CImg<int> imagen,
 	return imagen;
 }
 
+// Maneja un LUT variable aplicado a la imagen que le paso por parametro
+/// Eje1, inciso 5
+CImg<int> get_image_by_LUT(CImg<int> imagen) {
+
+	// Creo el LUT de 256x256
+	CImg<bool> LUT(256, 256);
+	CImg<float> LUT_function(256, 1, 1);
+
+	// Muestro mi imagen, y en otra ventana el LUT
+
+	CImgDisplay LUT_ventana(LUT, "Perfil del LUT");
+	imagen.display("Imagen modificada");
+
+	while (!LUT_ventana.is_closed() && !LUT_ventana.is_keyQ()) { 
+		// Dibujo la identidad
+		for (int i = 0; i < LUT.width(); i++) {
+			LUT_function(i) = i;
+		}
+
+		unsigned char white[3] = {1, 1, 1};
+		LUT.draw_graph(LUT_function, white, 1, 1, 1, 255, 0);
+/*
+		// Hora de capturar clicks!
+		// Wait for any user event occuring on the current display
+		ventana.wait();
+		y = ventana.mouse_y();
+		x = ventana.mouse_x();
+
+		// TENGO QUE IMPLEMENTAR FUNCION CUBICA Y RESOLUCION GAUSSIANA ABURRIDOOO
+		if (ventana.button() && ventana.mouse_y()>=0) {
+
+		}*/
+
+		// Actualizo
+		LUT.display(LUT_ventana);
+		imagen.display("Imagen modificada");
+	}
+
+}
+
 /// Ejercicio 1 de la Guia 2
 void guia2_eje1() {
 
@@ -58,7 +99,9 @@ void guia2_eje1() {
 	CImgList<int> compartido(imagen_desde_archivo, grafico, imagen_modificada);
 
 	// Mostramos imagen
-	compartido.display("Imagen original, imagen invertida por una transformacion");
+	//compartido.display("Imagen original, imagen invertida por una transformacion");
+
+	get_image_by_LUT(imagen_desde_archivo);
 }
 
 void guia2_eje2() {
@@ -81,10 +124,64 @@ void guia2_eje2() {
 
 }
 
+// Implementa operaciones aritmeticas en dos imagenes pasada por parametros, retorna la imagen final
+CImg<unsigned char> get_image_from_operations(
+						CImg<unsigned char> A, 
+						CImg<unsigned char> B, 
+						char ope='s') {
+
+	// Si son distintos tamanios, explota
+	assert(!(A.width() != B.width() || A.height() != B.height()));
+
+	CImg<unsigned char> salida(A.width(), A.height());
+
+	cimg_forXYC(A, x, y, v) {
+		int resultado;
+
+		if (ope == 's') { // suma
+			resultado = (A(x, y, v) + B(x, y, v))/2;
+		} else if (ope == 'r') { // resta o diferencia
+			resultado = (A(x, y, v) - B(x, y, v) + 255)/2;
+		} else if (ope == 'm') { // multiplicacion
+			// La idea es que sea binaria la imagen A para que sirva de mascara		
+			if (A(x, y, v) == 0) { // si es 0, funciona como mascara
+				resultado = 0;
+			} else {
+				resultado = B(x, y, v);
+			}
+		} else if (ope == 'd') { // division
+			if (A(x, y, v) == 0) { // si es 0, funciona como mascara
+				resultado = 0;
+			} else {
+				resultado = 255 - B(x, y, v); // es la reciproca
+			}
+		}
+
+		salida(x, y, v) = (resultado < 0) ? 0 : ((resultado > 255) ? 255 : resultado);
+	}
+
+	return salida;
+
+}
+
+void guia2_eje3() {
+
+	CImg<unsigned char> 
+		A("../../img/letras1.tif"),
+		B("../../img/huang2.jpg");
+
+	CImgList<unsigned char> compilado(A, B, 
+		get_image_from_operations(A, B, 's'),
+		get_image_from_operations(A, B, 'r'),
+		get_image_from_operations(A.get_quantize(2).get_normalize(0,1), B, 'm'),
+		get_image_from_operations(A.get_quantize(2).get_normalize(0,1), B, 'd'));
+
+	compilado.display("A, B, suma, diferencia");
+}
 
 int main(int argc, char *argv[]) {
 
-  guia2_eje2();
+  guia2_eje3();
 
   return 0;
 }
