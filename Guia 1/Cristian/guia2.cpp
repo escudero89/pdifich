@@ -241,9 +241,17 @@ void guia2_eje4() {
 	compilado.display("Imagen original y con un filtro de emboss");
 }
 
+void guia2_eje5() {
+	CImg<unsigned char> imagen("../../img/huang1.jpg");
+
+	CImgList<unsigned char> compilado(imagen, imagen.get_threshold(1));
+
+	compilado.display("Imagen original y con threshold");
+}
+
 int main(int argc, char *argv[]) {
 
-  guia2_eje4();
+  guia2_eje5();
 
   return 0;
 }
