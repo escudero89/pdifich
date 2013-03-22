@@ -15,12 +15,24 @@
 using namespace cimg_library;
 
 // Trabaja con un vector de 0 a 255, y devuelve el vector con cierta transformacion
-CImg<int> get_image_transformed(CImg<int> imagen, CImg<int> &grafico, float a = 1, float c = 0) {
+CImg<int> get_image_transformed(CImg<int> imagen, 
+								CImg<int> &grafico, 
+								char tipo = ' ', 
+								float a = 1, float c = 0) {
 	
 	CImg<float> LUT(256, 1, 1); // de 0 a 255
 
 	for (int i = 0; i < LUT.width(); i++) {
-		float f_x = a * i + c;
+		float f_x;
+
+		if (tipo == 'l') { // logaritmica
+			f_x = log(1 + i);
+		} else if (tipo == 'p') {// potencia
+			f_x = pow(i, a);
+		} else { // lineal
+			f_x = a * i + c;
+		}
+
 		std::cout << f_x << std::endl;
 		LUT(i) = (f_x < 0) ? 0 : ((f_x > 255) ? 255 : f_x);
 	}
@@ -41,22 +53,38 @@ void guia2_eje1() {
 
 	CImg<int> imagen_desde_archivo("../../img/huang1.jpg"),
 		grafico(imagen_desde_archivo.width(), imagen_desde_archivo.height()),
-		imagen_modificada(get_image_transformed(imagen_desde_archivo, grafico, .25, 0));
+		imagen_modificada(get_image_transformed(imagen_desde_archivo, grafico, ' ', -1, 255));
 
 	CImgList<int> compartido(imagen_desde_archivo, grafico, imagen_modificada);
 
 	// Mostramos imagen
-	compartido.display("Imagen original, imagen modificada por una transformacion");
+	compartido.display("Imagen original, imagen invertida por una transformacion");
 }
 
 void guia2_eje2() {
+
+	CImg<int> imagen_desde_archivo("../../img/rmn.jpg"),
+		
+		grafico_log(imagen_desde_archivo.width(), imagen_desde_archivo.height()),
+		grafico_pot(grafico_log),
+
+		imagen_log(get_image_transformed(imagen_desde_archivo, grafico_log, 'l')),
+		imagen_pot(get_image_transformed(imagen_desde_archivo, grafico_pot, 'p', .8));
+
+	CImgList<int> compartido(
+		imagen_desde_archivo, 
+		grafico_log, imagen_log,
+		grafico_pot, imagen_pot);
+
+	// Mostramos imagen
+	compartido.display("Imagen original, imagen modificada por transformaciones");
 
 }
 
 
 int main(int argc, char *argv[]) {
 
-  guia2_eje1();
+  guia2_eje2();
 
   return 0;
 }
