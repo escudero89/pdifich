@@ -249,9 +249,58 @@ void guia2_eje5() {
 	compilado.display("Imagen original y con threshold");
 }
 
+/// Le paso una imagen y el bit en el que quiero que me devuelva la imagen
+CImg<unsigned char> get_rodaja(CImg<unsigned char> imagen, short bit = 0) {
+	
+	CImg<unsigned char> imagen256(imagen.quantize(8)); // la transformo a 8 bits
+
+	cimg_forXYC(imagen256, x, y, v) {
+		float val_pixel = imagen256(x, y, v),
+			nuevo_val_pixel = 0;
+
+		// Del mayor al menor bit, hasta llegar al bit base
+		for (short i = 7; i >= bit; i--) {
+			float val_binario = pow(2, i);
+
+			if (val_pixel / val_binario >= 1) { // Entonces tiene ese bit activo
+				val_pixel -= val_binario; // y se lo resto
+
+				nuevo_val_pixel += val_binario;
+			} 
+		}
+
+		imagen256(x, y, v) = nuevo_val_pixel;
+	}
+
+	return imagen256;
+
+}
+
+/// Ejercicio 6, de rodajas
+void guia2_eje6() {
+	CImg<unsigned char> imagen("../../img/lenna.gif"),
+		rodajeada;
+
+	imagen.quantize(8);
+
+	for (short i = 7; i >= 0; i--) {
+		std::stringstream ss;
+		rodajeada = get_rodaja(imagen, i);
+
+		ss << "Imagen generada desde el bit " << i << ". MSE: " << rodajeada.MSE(imagen);
+		rodajeada.display(ss.str().c_str());
+	}
+
+	std::stringstream ss;
+	ss << "Original. MSE: " << imagen.MSE(imagen);
+
+	imagen.display(ss.str().c_str());
+
+}
+
 int main(int argc, char *argv[]) {
 
-  guia2_eje5();
+  guia2_eje6();
 
   return 0;
 }
