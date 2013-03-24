@@ -15,6 +15,37 @@
 
 using namespace cimg_library;
 
+/// Interpolacion de Lagrange, retorna una imagen de Nx1 con los valores de f(x) entre p0 y p3
+CImg<int> get_lagrange_interpolation(short p0[2], short p1[2], short p2[2], short p3[2]) {
+
+	CImg<int> f_x(p3[0] - p0[0], 1);
+
+	unsigned int nro_puntos = 3;
+
+	float x0 = p0[0], x1 = p1[0], x2 = p2[0], x3 = p3[0],
+		y0 = p0[1], y1 = p1[1], y2 = p2[1], y3 = p3[1];
+
+	// Recorro el desde el x_min al x_max
+	cimg_forXYC(f_x, x, y, v) {
+		
+		float f_x_cal,
+			l0 = ((x - x1) * (x - x2) * (x - x3)) / ((x0 - x1) * (x0 - x2) * (x0 - x3)),
+			l1 = ((x - x0) * (x - x2) * (x - x3)) / ((x1 - x0) * (x1 - x2) * (x1 - x3)),
+			l2 = ((x - x0) * (x - x1) * (x - x3)) / ((x2 - x0) * (x2 - x1) * (x2 - x3)),
+			l3 = ((x - x0) * (x - x1) * (x - x2)) / ((x3 - x0) * (x3 - x1) * (x3 - x2));
+
+		// Interpolacion de Lagrange
+		f_x_cal = l0 * y0 + l1 * y1 + l2 * y2 + l3 * y3;
+
+		f_x_cal = (f_x_cal > 255) ? 255 : (f_x_cal < 0) ? 0 : f_x_cal;
+
+		f_x(x, y, v) = f_x_cal;
+	}
+
+	return f_x;
+
+}
+
 // Trabaja con un vector de 0 a 255, y devuelve el vector con cierta transformacion
 CImg<int> get_image_transformed(CImg<int> imagen, 
 								CImg<int> &grafico, 
@@ -300,7 +331,19 @@ void guia2_eje6() {
 
 int main(int argc, char *argv[]) {
 
-  guia2_eje6();
+ // guia2_eje6();
+	CImg<unsigned char> grafico(256,256);
 
-  return 0;
+	short p0[2] = {0 ,0 },
+		p1[2] = {40 , 220},
+		p2[2] = {230 , 30},
+		p3[2] = {256 , 256},
+
+		white[3] = {255, 255, 255};
+
+	CImg<unsigned char> f_x = get_lagrange_interpolation(p0,p1,p2,p3);
+
+	grafico.draw_graph(f_x, white).display();
+
+	return 0;
 }
