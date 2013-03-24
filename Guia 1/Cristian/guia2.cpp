@@ -27,7 +27,6 @@ CImg<int> get_lagrange_interpolation(short p0[2], short p1[2], short p2[2], shor
 
 	// Recorro el desde el x_min al x_max
 	cimg_forXYC(f_x, x, y, v) {
-		
 		float f_x_cal,
 			l0 = ((x - x1) * (x - x2) * (x - x3)) / ((x0 - x1) * (x0 - x2) * (x0 - x3)),
 			l1 = ((x - x0) * (x - x2) * (x - x3)) / ((x1 - x0) * (x1 - x2) * (x1 - x3)),
@@ -80,42 +79,99 @@ CImg<int> get_image_transformed(CImg<int> imagen,
 	return imagen;
 }
 
+/// Le paso una imagen y un LUT_function y mapea los valores de uno a otro
+CImg<unsigned char> get_image_from_LUT(CImg<unsigned char> base, CImg<float> LUT_function) {
+
+	cimg_forXYC(base, x, y, v) {
+		base(x, y, v) = LUT_function(base(x, y, v));
+	}
+
+	return base;
+}
+
 // Maneja un LUT variable aplicado a la imagen que le paso por parametro
 /// Eje1, inciso 5
-CImg<int> get_image_by_LUT(CImg<int> imagen) {
+CImg<int> get_image_by_LUT(CImg<unsigned char> imagen) {
+
+	// Cuantizamos la imagen a 8 bits
+	imagen.quantize(8);
 
 	// Creo el LUT de 256x256
-	CImg<bool> LUT(256, 256);
+	CImg<bool> LUT(256, 256), old_LUT(LUT);
 	CImg<float> LUT_function(256, 1, 1);
 
 	// Muestro mi imagen, y en otra ventana el LUT
+	CImgDisplay ventana(LUT, "Perfil del LUT"),
+		ventana_muestra(imagen, "Imagen modificada");
+		
+	// Puntos para la interpolacion
+	short	p0[2] = {0, 0}, 
+			p1[2], 
+			p2[2], 
+			p3[2] = {256, 256};
+	
+	unsigned char white[3] = {1, 1, 1};
 
-	CImgDisplay LUT_ventana(LUT, "Perfil del LUT");
-	imagen.display("Imagen modificada");
+	bool first_click = false;
 
-	while (!LUT_ventana.is_closed() && !LUT_ventana.is_keyQ()) { 
+	while (!ventana.is_closed() && !ventana.is_keyQ()) { 
 		// Dibujo la identidad
 		for (int i = 0; i < LUT.width(); i++) {
 			LUT_function(i) = i;
 		}
 
-		unsigned char white[3] = {1, 1, 1};
 		LUT.draw_graph(LUT_function, white, 1, 1, 1, 255, 0);
-/*
+
 		// Hora de capturar clicks!
 		// Wait for any user event occuring on the current display
 		ventana.wait();
-		y = ventana.mouse_y();
-		x = ventana.mouse_x();
+		
+		short y = ventana.mouse_y(),
+			x = ventana.mouse_x();
 
-		// TENGO QUE IMPLEMENTAR FUNCION CUBICA Y RESOLUCION GAUSSIANA ABURRIDOOO
 		if (ventana.button() && ventana.mouse_y()>=0) {
+			LUT.draw_point(x, y, white);
 
-		}*/
+			if (!first_click) {
+				first_click = true;
 
-		// Actualizo
-		LUT.display(LUT_ventana);
-		imagen.display("Imagen modificada");
+				// Y actualizo el punto
+				p1[0] = x;
+				p1[1] = 255 - y; // para invertir el eje y
+
+			} else {
+				first_click = false;
+
+				// Y actualizo el punto
+				p2[0] = x;
+				p2[1] = 255 - y;
+
+				// Reviso que p1 sea menor a p2
+				if (p1[0] > p2[0]) {
+					p0[0] = p1[0]; p0[1] = p1[1]; // lo uso como temporal
+
+					p1[0] = p2[0]; p1[1] = p2[1];
+					p2[0] = p0[0]; p2[1] = p0[1];
+					p0[0] = 0; p0[1] = 0;
+				}
+
+				// Interpolacion llamando!!!!!!!!
+				LUT_function = get_lagrange_interpolation(p0, p1, p2, p3);
+
+				LUT.draw_graph(LUT_function, white);
+			}
+
+			LUT.display(ventana);
+
+			if (!first_click) {
+				get_image_from_LUT(imagen, LUT_function).display(ventana_muestra);
+			}
+		}
+
+		// Y limpio
+		if (!first_click) {
+			LUT = old_LUT;
+		}
 	}
 
 }
@@ -130,7 +186,7 @@ void guia2_eje1() {
 	CImgList<int> compartido(imagen_desde_archivo, grafico, imagen_modificada);
 
 	// Mostramos imagen
-	//compartido.display("Imagen original, imagen invertida por una transformacion");
+	compartido.display("Imagen original, imagen invertida por una transformacion");
 
 	get_image_by_LUT(imagen_desde_archivo);
 }
@@ -331,7 +387,8 @@ void guia2_eje6() {
 
 int main(int argc, char *argv[]) {
 
- // guia2_eje6();
+  	guia2_eje1();
+  	/*
 	CImg<unsigned char> grafico(256,256);
 
 	short p0[2] = {0 ,0 },
@@ -344,6 +401,6 @@ int main(int argc, char *argv[]) {
 	CImg<unsigned char> f_x = get_lagrange_interpolation(p0,p1,p2,p3);
 
 	grafico.draw_graph(f_x, white).display();
-
+*/
 	return 0;
 }
