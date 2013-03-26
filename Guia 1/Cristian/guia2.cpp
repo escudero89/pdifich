@@ -329,11 +329,26 @@ void guia2_eje4() {
 }
 
 void guia2_eje5() {
-	CImg<unsigned char> imagen("../../img/huang1.jpg");
+	CImg<unsigned char> imagen("../../img/huang1.jpg"),
+		imagen_dos("../../img/huang2.jpg"),
+		umbral(imagen.get_threshold(128).get_resize(256, 256)),
+		umbral_dos(imagen_dos.get_threshold(128));
 
-	CImgList<unsigned char> compilado(imagen, imagen.get_threshold(128));
+	CImgList<unsigned char> compilado(imagen, 
+		imagen, umbral, get_inversion(umbral), imagen_dos, umbral_dos, get_inversion(umbral_dos));
 
-	compilado.display("Imagen original y con threshold");
+	//compilado.display("Imagen original, con threshold e invertida. Imagen Dos al lado");
+
+	// Aplicamos una serie de operaciones relacionales
+	compilado.assign(
+		~umbral&~umbral_dos,
+		~umbral|umbral_dos,
+		umbral^umbral_dos,
+		umbral&~umbral_dos,
+		umbral^(~umbral&umbral_dos)
+		);
+
+	compilado.display("NOT 1 AND NOT 2, NOT then 1 OR 2, 1 XOR 2, 1 AND NOT 2, 1 XOR (NOT 1 AND 2)");
 }
 
 /// Le paso una imagen y el bit en el que quiero que me devuelva la imagen
@@ -385,9 +400,18 @@ void guia2_eje6() {
 
 }
 
+/// Ejercicio 7
+void guia2_eje7() {
+
+	CImg<unsigned char> earth("../../img/earth.bmp");
+
+	get_image_by_LUT(earth);
+
+}
+
 int main(int argc, char *argv[]) {
 
-  	guia2_eje1();
+  	guia2_eje5();
   	/*
 	CImg<unsigned char> grafico(256,256);
 
