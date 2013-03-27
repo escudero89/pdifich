@@ -93,9 +93,6 @@ CImg<unsigned char> get_image_from_LUT(CImg<unsigned char> base, CImg<float> LUT
 /// Eje1, inciso 5
 CImg<int> get_image_by_LUT(CImg<unsigned char> imagen) {
 
-	// Cuantizamos la imagen a 8 bits
-	imagen.quantize(8);
-
 	// Creo el LUT de 256x256
 	CImg<bool> LUT(256, 256), old_LUT(LUT);
 	CImg<float> LUT_function(256, 1, 1);
@@ -119,6 +116,9 @@ CImg<int> get_image_by_LUT(CImg<unsigned char> imagen) {
 		for (int i = 0; i < LUT.width(); i++) {
 			LUT_function(i) = i;
 		}
+
+		// resizeo LUT_function
+		LUT_function.resize(256, 1);
 
 		LUT.draw_graph(LUT_function, white, 1, 1, 1, 255, 0);
 
@@ -219,7 +219,7 @@ CImg<unsigned char> get_image_from_operations(
 
 	std::cout << A.width() << " " << B.width() << " | " << A.height() << " " << B.height() << std::endl;
 	// Si son distintos tamanios, explota
-	assert(!(A.width() != B.width() || A.height() != B.height()));
+	assert(A.is_sameXY(B)); // thanks @fer
 
 	CImg<unsigned char> salida(A.width(), A.height());
 
@@ -258,7 +258,8 @@ void guia2_eje3() {
 	CImg<unsigned char> 
 		A("../../img/letras1.tif"),
 		B("../../img/huang2.jpg"),
-		promedio;
+		promedio,
+		imagen_dividida_n;
 
 	CImgList<unsigned char> compilado(A, B, 
 		get_image_from_operations(A, B, 's'),
@@ -273,8 +274,14 @@ void guia2_eje3() {
 
 	promedio = B.get_noise(sigma);
 	// Queremos 50 imagenes 
-	for (unsigned int k = 0 ; k < 5 ; k++) {
+	for (unsigned int k = 0, n = 50 ; k < n ; k++) {
 		// Las voy sumando varias veces (50 para ser exacto)
+		imagen_dividida_n = B.get_noise(sigma);
+
+		cimg_forXYC(imagen_dividida_n, x, y, v) {
+			imagen_dividida_n(x, y, v) = imagen_dividida_n(x, y, v) / n;
+		}
+
 		promedio = get_image_from_operations(promedio, B.get_noise(sigma), 's');
 	}
 
@@ -400,18 +407,206 @@ void guia2_eje6() {
 
 }
 
+/// Le paso una imagen, retorna la placa (1: SE, 2:X)
+short calculate_asus(CImg<unsigned char> imagen) {
+	
+	// Dividimos la imagen en el umbral
+	CImg<unsigned char> umbral = imagen.get_threshold(200);
+
+	// Medimos la cantidad de negro en un subrectangulo de la imagen
+	short x0 = 137, xf = 143, y0 = 164, yf = 175,
+		resultado = 0,
+		cant_blanco = 0,
+		cant_blanco_divisora = 48; // este es un numero promediado de 59 (X) y 38 (SE)
+
+	// Recorremos ese rectangulo en la imagen contando la cantidad de blanco
+	for (unsigned int x = x0 ; x <= xf ; x++) {
+		for (unsigned int y = y0 ; y <= yf ; y++) {
+			cant_blanco += umbral(x, y);
+		}
+	}
+
+	std::cout << "cant_blanco: " << cant_blanco << std::endl;
+
+	if (cant_blanco > cant_blanco_divisora) {
+		std::cout << "El tipo de placa es a7v600-X\n";
+		resultado = 2;
+	} else {
+		std::cout << "El tipo de placa es a7v600-SE\n";
+		resultado = 1;
+	}
+
+	return resultado;
+}
+
+/// Voy a determinar el tamanho de la pastilla midiendo el trozo mas largo
+short get_number_of_pills_helper(CImg<unsigned char> umbral) {
+	short pastilla_width = 0,
+		min_pastilla_width = umbral.width(),
+		max_pastilla_width = 0,
+
+		x_min_local = 0;
+		
+	bool en_pastilla = false;
+
+	for (unsigned int y = 0; y < umbral.height(); y++) {
+		x_min_local = 0;
+
+		for (unsigned int x = 0; x < umbral.width(); x++) {
+			// Si encuentro la pastilla
+			if (umbral(x, y) != 0 && !en_pastilla) {
+				en_pastilla = true;
+
+				// Busco el mas chico de todos
+				min_pastilla_width = (x < min_pastilla_width) ? x : min_pastilla_width;
+
+				x_min_local = x;
+			}
+
+			// Si "salgo" de la pastilla
+			if (umbral(x, y) == 0 && en_pastilla) {
+				en_pastilla = false;
+
+				// No usamos el mismo x, sino otro para comparar (debido a que puede tomar la ultima pastilla)
+				unsigned int x_r = x - x_min_local;
+				// Busco el mas largo
+				max_pastilla_width = (x_r > max_pastilla_width) ? x_r : max_pastilla_width;
+				break;
+			}
+		}
+	}
+
+	// Retorno el ancho de la pastilla
+	return max_pastilla_width - min_pastilla_width;
+
+}
+
+/// Le paso una imagen, me devuelve la cantidad de remedio faltante y su ubicacion
+short get_number_of_pills(CImg<unsigned char> &base, short cant_pills_x = 5, short cant_pills_y = 2) {
+
+	CImg<unsigned char> umbral = base.get_threshold(100);
+
+	unsigned int min_x = base.width(),
+		max_x = 0,
+		min_y = base.height(),
+		max_y = 0; // minimo valor de x para recortar
+
+	// Recorro la imagen y busco donde empiezan las pildoras
+	cimg_forXY(umbral, x, y) {
+		// Si no es negro
+		if (umbral(x, y) != 0) {
+			// Y el x es menor al guardado (o mayor)
+			min_x = (x < min_x) ? x : min_x;
+			max_x = (x > max_x) ? x : max_x;
+
+			// Lo mismo con el y
+			min_y = (y < min_y) ? y : min_y;
+			max_y = (y > max_y) ? y : max_y;
+		}
+	}
+
+	// Ahora lo cropeo
+	umbral.crop(min_x, min_y, max_x, max_y);
+
+	// Obtengo el ancho de la pastilla
+	short pastilla_width = get_number_of_pills_helper(umbral),
+		// Y el largo al rotar la imagen 90º
+		pastilla_height = get_number_of_pills_helper(umbral.get_rotate(90));
+
+	// Voy moviendo entre centros de cada pastilla (cuadrados de nxn)
+	// Para sacar el step, hago una cosa loca (se ve mejor si lo haces a mano)
+	short step_x = (umbral.width() - cant_pills_x * pastilla_width) / (cant_pills_x - 1) + pastilla_width,
+		x_start = pastilla_width / 2, 
+		x_start_base = x_start,
+
+		step_y = (umbral.height() - cant_pills_y * pastilla_height) / (cant_pills_y - 1) + pastilla_height,
+		y_start = pastilla_height / 2,
+		y_start_base = y_start,
+
+		cant_blanco = 0,
+		cant_negro = 0,
+		pastillas_faltantes = 0,
+		n = ((pastilla_width < pastilla_height) ? pastilla_width : pastilla_height) / 3;
+
+	for (unsigned int j = 0; j < cant_pills_y; j++) {
+		y_start = y_start_base + step_y * j;
+
+		for (unsigned int i = 0; i < cant_pills_x; i++) {
+			// Empiezo en la primera pastilla
+			x_start = x_start_base + step_x * i;
+
+			// Recorro el rectangulo de nxn
+			for (unsigned int y = y_start - n ; y <= y_start + n ; y++) {
+				for (unsigned int x = x_start - n ; x <= x_start + n ; x++) {
+					// Voy contando la cantidad de pixeles blancos y negros
+					if (umbral(x, y) != 0) {
+						cant_blanco++;
+					} else {
+						cant_negro++;
+					}
+				}
+			}
+			std::cout << x_start << " @@ " << y_start << std::endl;
+			// Si tuve mas pixeles blancos que negro, es porque hay una pastilla
+			if (cant_blanco > cant_negro) {
+				std::cout << "Pastilla [" << i + j * cant_pills_x << "] okay!\n";
+			} else {
+				std::cout << "Pastilla [" << i + j * cant_pills_x << "] BAD!\n";
+				pastillas_faltantes++;
+
+				// Voy a dibujar en el umbral donde falta la pastilla
+				unsigned char white[3] = {1, 1, 1}, black[3] = {0, 0, 0};
+				
+				// Dibujamos un rectangulo a dentro de otro
+				umbral.draw_rectangle(x_start - n, y_start - n, x_start + n, y_start + n, white);
+				umbral.draw_rectangle(x_start - n/2, y_start - n/2, x_start + n/2, y_start + n/2, black);
+			}
+
+			// Y renicializamos contadores
+			cant_blanco = cant_negro = 0;
+		}
+	}
+
+	umbral.display();
+
+	return pastillas_faltantes;
+
+}
+
 /// Ejercicio 7
 void guia2_eje7() {
 
+	/// INCISO A
+	// Hay unos aliens arriba a la derecha de los simpsons :3
 	CImg<unsigned char> earth("../../img/earth.bmp");
-
 	get_image_by_LUT(earth);
+
+	/// INCISO B
+	CImg<unsigned char> imag_SE("../../img/a7v600-SE.gif"),
+	 	imag_SE_r("../../img/a7v600-SE(RImpulsivo).gif"),
+	 	imag_X("../../img/a7v600-X.gif"),
+	 	imag_X_r("../../img/a7v600-X(RImpulsivo).gif");
+
+	CImgList<unsigned char> compartido(imag_X.get_threshold(200), imag_SE.get_threshold(200));
+
+	calculate_asus(imag_X);
+	calculate_asus(imag_SE);
+
+	calculate_asus(imag_X_r);
+	calculate_asus(imag_SE_r);
+	compartido.display("Ambas placas");
+
+	/// INCISO C
+	CImg<unsigned char> blister("../../img/blister_completo.jpg"),
+		blister_incompleto("../../img/blister_incompleto.jpg");
+
+	get_number_of_pills(blister_incompleto);
 
 }
 
 int main(int argc, char *argv[]) {
 
-  	guia2_eje5();
+  	guia2_eje7();
   	/*
 	CImg<unsigned char> grafico(256,256);
 
