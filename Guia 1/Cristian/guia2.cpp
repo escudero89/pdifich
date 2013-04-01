@@ -579,7 +579,7 @@ void guia2_eje7() {
 	/// INCISO A
 	// Hay unos aliens arriba a la derecha de los simpsons :3
 	CImg<unsigned char> earth("../../img/earth.bmp");
-	get_image_by_LUT(earth);
+//	get_image_by_LUT(earth);
 
 	/// INCISO B
 	CImg<unsigned char> imag_SE("../../img/a7v600-SE.gif"),
@@ -588,17 +588,17 @@ void guia2_eje7() {
 	 	imag_X_r("../../img/a7v600-X(RImpulsivo).gif");
 
 	CImgList<unsigned char> compartido(imag_X.get_threshold(200), imag_SE.get_threshold(200));
-
+/*
 	calculate_asus(imag_X);
 	calculate_asus(imag_SE);
 
 	calculate_asus(imag_X_r);
 	calculate_asus(imag_SE_r);
 	compartido.display("Ambas placas");
-
+*/
 	/// INCISO C
 	CImg<unsigned char> blister("../../img/blister_completo.jpg"),
-		blister_incompleto("../../img/blister_incompleto.jpg");
+		blister_incompleto("../../img/blister_incompleto_other.jpg");
 
 	get_number_of_pills(blister_incompleto);
 
@@ -607,19 +607,6 @@ void guia2_eje7() {
 int main(int argc, char *argv[]) {
 
   	guia2_eje7();
-  	/*
-	CImg<unsigned char> grafico(256,256);
 
-	short p0[2] = {0 ,0 },
-		p1[2] = {40 , 220},
-		p2[2] = {230 , 30},
-		p3[2] = {256 , 256},
-
-		white[3] = {255, 255, 255};
-
-	CImg<unsigned char> f_x = get_lagrange_interpolation(p0,p1,p2,p3);
-
-	grafico.draw_graph(f_x, white).display();
-*/
 	return 0;
 }
