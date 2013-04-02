@@ -295,6 +295,8 @@ CImgList<unsigned char> rodajasBits(CImg<unsigned char> imagen, bool display = f
 
 /// Ejercicio 7.3
 void checkBlister(CImg<unsigned char> imagen){
+    CImg<unsigned char> imagen_original(imagen);
+
     ///Parametros
     int umbral = 100,               //de grises para aplicar a la imagen
         pixel_consecutivos= 3,      //Para encontrar pastilla de referencia
@@ -436,7 +438,8 @@ void checkBlister(CImg<unsigned char> imagen){
         cout<<"Pastilla "<< i <<": "<<pastillas[i]<<endl;
     }
 
-    imagen.display();
+    imagen_original.display();
+    //imagen.display();
 }
 
 int main(){
