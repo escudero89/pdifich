@@ -293,8 +293,151 @@ CImgList<unsigned char> rodajasBits(CImg<unsigned char> imagen, bool display = f
     return L;
 }
 
+/// Ejercicio 7.3
+void checkBlister(CImg<unsigned char> imagen){
+    ///Parametros
+    int umbral = 100,               //de grises para aplicar a la imagen
+        pixel_consecutivos= 3,      //Para encontrar pastilla de referencia
+        radio_pastillas = 14,       //Radio de las pastillas
+        separacion_pastillas_y = 18,//Separacion Vertical entre pastillas
+        separacion_pastillas_x = 19,//Separacion Horizontal entre pastillas
+        fila_central_1,             //Coordenada "y" de la primera fila de pastillas
+        fila_central_2,             //Coordenada "y" de la segunda fila de pastillas
+        ancho_verificacion = 10;    //Para realizar el perfil de intensidad de la
+                                    //fila de pastillas (DEBE SER MENOR QUE RADIO PASTILLAS)
+
+    //Aplicamos umbral a la imagen
+    imagen.threshold(umbral);
 
 
+    ///Obtencion de fila_central_1 y fila_central_2
+
+    //Variablea a utilizar en el ciclo que sigue
+    bool flag = true;
+    int cont = 0;
+    //Ciclo
+    cimg_forXY(imagen, i, j){
+        if(imagen(i,j) == 1){
+            cont++;
+            if(cont == pixel_consecutivos && flag){
+                fila_central_1 = j + radio_pastillas;
+                if(fila_central_1 < imagen.height()/2){
+                    fila_central_2 = fila_central_1 + 2*radio_pastillas + separacion_pastillas_y;
+                    flag = false;
+                }else{//si la fila central 1 no tiene pastillas, asignamos cero
+                    fila_central_2 = fila_central_1;
+                    fila_central_1 = 0;
+                }
+            }
+        }
+        else{
+             cont = 0;
+        }
+    }
+
+
+     ///Perfil de intensidad multiple 1 y 2
+    //Obtenemos perfil de intensidad promediando en una franja
+    //de ancho: ancho_verificacion y redondeamos el promedio a valores 0 o 1
+
+    //Declaramos perfiles de intensidad
+    CImg<unsigned char> intensidad_1(imagen.width(),1,1,1,0),
+                        intensidad_2(intensidad_1);
+
+    //Sumamos los perfiles dentro del ancho dado
+    if(fila_central_1 != 0){ //si fila_central_1 no esta vacia
+        for(int i=-ancho_verificacion/2; i<ancho_verificacion/2; i++){
+            intensidad_1 = intensidad_1 + imagen.get_row(fila_central_1 + i);
+        }
+    }
+
+    for(int i=-ancho_verificacion/2; i<ancho_verificacion/2; i++){
+        intensidad_2 = intensidad_2 + imagen.get_row(fila_central_2 + i);
+    }
+
+    //Dividimos por el ancho (promedio)
+    if(fila_central_1!=0){
+        cimg_forX(intensidad_1,i){
+            intensidad_1(i) = ((intensidad_1(i)/(float)(ancho_verificacion)) > 0.5) ? 1 : 0;
+        }
+    }
+    cimg_forX(intensidad_2,i){
+        intensidad_2(i) = ((intensidad_2(i)/(float)(ancho_verificacion)) > 0.5) ? 1 : 0;
+    }
+
+    ///Conteo de pastillas
+    //Declaraciones
+    vector<bool> pastillas(10, false);  //Vector booleano 1 si la pastilla esta 0 si no
+
+    int cont_ceros = 0;                 //Para contar los ceros entre pastillas, si hay
+    int max_ceros = 2*radio_pastillas +   // mas ceros que max_ceros, entonces se considera
+            separacion_pastillas_x;     // que en ese lugar falta una pastilla
+    int borde = 15;
+    int max_ceros_primer_pastilla = max_ceros + borde ;
+    int id_pastilla = 0;                // Identificador de pastilla, de izq a derecha de arriba hacia abajo
+    bool dentro_de_pastilla = false;    // Bandera indicadora, true si estoy dentro de una pastilla
+
+    if(fila_central_1 != 0){
+        cimg_forX(intensidad_1, i){
+
+            if(intensidad_1(i) == 0){
+                cont_ceros++;
+                dentro_de_pastilla = false;
+            }
+
+            if((cont_ceros == max_ceros) and (id_pastilla != 0)){
+                pastillas[id_pastilla] = false;
+                id_pastilla ++;
+                cont_ceros = 0;
+            }
+
+            if( (id_pastilla == 0) and (cont_ceros == max_ceros_primer_pastilla) ){
+                pastillas[id_pastilla] = false;
+                id_pastilla ++;
+                cont_ceros = 0;
+            }
+
+            if(intensidad_1(i) == 1 && !dentro_de_pastilla){
+                pastillas[id_pastilla] = true;
+                id_pastilla++;
+                cont_ceros = 0;
+                dentro_de_pastilla = true;
+            }
+        }
+    }
+    //Reseteamos parametros
+    cont_ceros = 0;
+    id_pastilla = 5;
+    dentro_de_pastilla = false;
+
+    cimg_forX(intensidad_2, i){
+
+        if(intensidad_2(i) == 0){
+            cont_ceros++;
+            dentro_de_pastilla = false;
+        }
+
+        if(cont_ceros == max_ceros){
+            pastillas[id_pastilla] = false;
+            id_pastilla ++;
+            cont_ceros = 0;
+        }
+
+        if(intensidad_2(i) == 1 && !dentro_de_pastilla){
+            pastillas[id_pastilla] = true;
+            id_pastilla++;
+            cont_ceros = 0;
+            dentro_de_pastilla = true;
+        }
+    }
+
+    ///Mostramos resultados
+    for(int i=0; i<pastillas.size(); i++){
+        cout<<"Pastilla "<< i <<": "<<pastillas[i]<<endl;
+    }
+
+    imagen.display();
+}
 
 int main(){
 #if 0 ///   EJERCICIO 1
@@ -398,10 +541,20 @@ while(true){
 }
 #endif
 
-
+///Ejercicio 7c
 #if 1
+    CImg<unsigned char> imagen1("../../../img/blister_incompleto.jpg");
+    CImg<unsigned char> imagen2("../../../img/blister_incompleto_other.jpg");
+    CImg<unsigned char> imagen3("../../../img/blister_completo.jpg");
 
-
+    /*
+    (imagen1, imagen1.get_threshold(100)).display();
+    (imagen2, imagen2.get_threshold(100)).display();
+    (imagen3, imagen3.get_threshold(100)).display();
+    */
+    checkBlister(imagen1);
+    checkBlister(imagen2);
+    checkBlister(imagen3);
 
 #endif
     return 0;
