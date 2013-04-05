@@ -78,15 +78,48 @@ void guia3_eje2() {
 }
 
 /// Tercer ejercicio
-void guia3_eje3() {
-    
+// Devuelve una imagen convolucionada con una matriz de NxN, con los valores pasados en el array
+CImg<double> get_filter(CImg<double> base, unsigned int N, double array[], double factor_escala = 1) {
+    CImg <double> mascara_promediado(N, N);
+
+    cimg_forXY(mascara_promediado, x, y) {
+        mascara_promediado(x, y) = array[x + y * N];
+    }
+
+    // La convolucionamos
+    base.convolve(mascara_promediado);
+
+    // Y retornamos aplicada el factor de escala, normalizando
+    return (base * factor_escala).get_normalize(0, 255);
+}
+
+void guia3_eje3(const char * filename) {
+
+    double array[9] = {
+        0.0, 1.0, 0.0, 
+        1.0, 1.0, 1.0, 
+        0.0, 1.0, 0.0
+    },
+    array_mayor[25] = {
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0
+    };
+
+    CImg<double> base(filename),
+        convolucionada(get_filter(base, 3, array, 1.0/5)),
+        convolucionada_mas(get_filter(base, 5, array_mayor, 1.0/25.0));
+
+    (base, convolucionada, convolucionada_mas).display("Efectos de desenfocado");
 }
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/FAMILIA_a.jpg", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/lenna.gif", "Imagen");
 
-    guia3_eje3();
+    guia3_eje3(filename);
 
     return 0;
 }
