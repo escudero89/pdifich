@@ -79,7 +79,13 @@ void guia3_eje2() {
 
 /// Tercer ejercicio
 // Devuelve una imagen convolucionada con una matriz de NxN, con los valores pasados en el array
-CImg<double> get_filter(CImg<double> base, unsigned int N, double array[], double factor_escala = 1) {
+CImg<double> get_filter(
+    CImg<double> base, 
+    unsigned int N, 
+    double array[], 
+    double factor_escala = 1,
+    bool acotar = false) {
+
     CImg <double> mascara_promediado(N, N);
 
     cimg_forXY(mascara_promediado, x, y) {
@@ -88,6 +94,17 @@ CImg<double> get_filter(CImg<double> base, unsigned int N, double array[], doubl
 
     // La convolucionamos
     base.convolve(mascara_promediado);
+
+    // Si acotamos, evitamos que se vaya del rango 0 ~ 255
+    if (acotar) {
+        cimg_forXY(base, x, y) {
+            if (base(x, y) > 255) {
+                base(x, y) = 255;
+            } else if (base(x, y) < 0) {
+                base(x, y) = 0;
+            }
+        }
+    }
 
     // Y retornamos aplicada el factor de escala, normalizando
     return (base * factor_escala).get_normalize(0, 255);
@@ -172,11 +189,53 @@ void guia3_eje4(const char * filename) {
 
 }
 
+/// Quinto Ejercicio
+void guia3_eje5(const char * filename) {
+
+    double PA_sumaUno_1[] = {
+        0.0, -1.0, 0.0,
+        -1.0, 5.0, -1.0,
+        0.0, -1.0, 0.0
+    }, PA_sumaUno_2[] = {
+        -1.0, -1.0, -1.0,
+        -1.0, 9.0, -1.0,
+        -1.0, -1.0, -1.0
+    }, PA_sumaUno_3[] = {
+        1.0, -2.0, 1.0,
+        -2.0, 5.0, -2.0,
+        1.0, -2.0, 1.0
+    }, PA_sumaCero_1[] = {
+        0.0, -1.0, 0.0,
+        -1.0, 4.0, -1.0,
+        0.0, -1.0, 0.0
+    }, PA_sumaCero_2[] = {
+        -1.0, -1.0, -1.0,
+        -1.0, 8.0, -1.0,
+        -1.0, -1.0, -1.0
+    }, PA_sumaCero_3[] = {
+        1.0, -2.0, 1.0,
+        -2.0, 4.0, -2.0,
+        1.0, -2.0, 1.0
+    };
+
+    CImg<double> base(filename),
+        sumUno_1(get_filter(base, 3, PA_sumaUno_1, 1, true)),
+        sumUno_2(get_filter(base, 3, PA_sumaUno_2, 1, true)),
+        sumUno_3(get_filter(base, 3, PA_sumaUno_3, 1, true)),
+
+        sumCero_1(get_filter(base, 3, PA_sumaCero_1, 1, true)),
+        sumCero_2(get_filter(base, 3, PA_sumaCero_2, 1, true)),
+        sumCero_3(get_filter(base, 3, PA_sumaCero_3, 1, true));
+
+    (base, sumUno_1, sumUno_2, sumUno_3).display("Suma uno");
+    (base, sumCero_1, sumCero_2, sumCero_3).display("Suma cero");
+}
+
 int main (int argc, char* argv[]) {
 
     const char* filename = cimg_option("-i", "../../img/lenna.gif", "Imagen");
 
-    guia3_eje4(filename);
+    guia3_eje5(filename);
 
     return 0;
 }
