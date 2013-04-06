@@ -109,17 +109,74 @@ void guia3_eje3(const char * filename) {
     };
 
     CImg<double> base(filename),
-        convolucionada(get_filter(base, 3, array, 1.0/5)),
+        convolucionada(get_filter(base, 3, array, 1.0/5.0)),
         convolucionada_mas(get_filter(base, 5, array_mayor, 1.0/25.0));
 
     (base, convolucionada, convolucionada_mas).display("Efectos de desenfocado");
+}
+
+/// Cuarto ejercicio
+// Le pasamos el tamanho NxN, el desvio (?), y el factor escala que va a afectar a la matriz
+CImg<double> get_gaussian_mask(unsigned int N, double desvio, double &factor_escala) {
+
+    CImg<double> gaussian_mask(N, N),
+        matriz_covarianza(2, 2);
+
+    const char white[] = {1};
+
+    // Lleno sus diagonales
+    matriz_covarianza(0, 0) = desvio;
+    matriz_covarianza(1, 1) = desvio;
+
+    gaussian_mask.draw_gaussian(N/2, N/2, matriz_covarianza, white);
+
+    gaussian_mask.normalize(0, 255);
+
+    cimg_forXY(gaussian_mask, x,  y) {
+        factor_escala += gaussian_mask(x, y);
+        std::cout << gaussian_mask(x,y) << " : ";
+    }
+
+    return gaussian_mask;
+
+}
+
+void guia3_eje4(const char * filename) {
+
+    /// INCISO A
+
+    double factor_escala = 0,
+        array_mayor[25] = {
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0
+    };
+
+    CImg<double> base(filename),
+        gaussian_mask(get_gaussian_mask(5, 10, factor_escala)),
+        con_gaussian(base.get_convolve(gaussian_mask) / factor_escala),
+        con_array(get_filter(base, 5, array_mayor, 1.0/25.0));
+
+    // Comparamos los resultados con un filtro de promediado del mismo tamanho
+    (base, con_gaussian, con_array).display("Original, gaussiano, promediado");
+
+    /// INCISO B
+
+    // Aplicamos un filtro de promediado
+    CImg<double> hubble("../../img/hubble.tif");
+    con_array = get_filter(hubble, 5, array_mayor, 1.0/25.0);
+
+    (hubble, con_array, con_array.get_threshold(150)).display("Imagen con los mayores elementos");
+
 }
 
 int main (int argc, char* argv[]) {
 
     const char* filename = cimg_option("-i", "../../img/lenna.gif", "Imagen");
 
-    guia3_eje3(filename);
+    guia3_eje4(filename);
 
     return 0;
 }
