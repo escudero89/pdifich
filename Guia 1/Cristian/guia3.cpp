@@ -231,11 +231,63 @@ void guia3_eje5(const char * filename) {
     (base, sumCero_1, sumCero_2, sumCero_3).display("Suma cero");
 }
 
+// Le paso una imagen y el A, y retorna A f(x,y) - f_PB(x,y)
+CImg<double> get_high_boost(CImg<double> base, CImg<double> base_PB, double A = 1) {
+
+    CImg<double> img(base);
+
+    cimg_forXY(img, x, y) {
+        double diff = A * base(x, y) - base_PB(x, y);
+
+        // Evitamos que se vaya de 0
+        img(x, y) = (diff > 255) ? 255 : (diff < 0) ? 0 : diff;
+    }
+
+    return img;
+
+}
+
+/// Sexto Ejercicio
+void guia3_eje6(const char * filename) {
+
+    double array[9] = {
+        0.0, 1.0, 0.0, 
+        1.0, 1.0, 1.0, 
+        0.0, 1.0, 0.0
+    };
+
+    CImg<double> base(filename),
+        img, img_hb, img_hb_2v(base),
+        base_PB(get_filter(base, 3, array, 1.0/5.0));
+
+    /// INCISO A
+
+    img = get_high_boost(base, base_PB);
+  
+    /// INCISO B
+
+    double A = 2;
+
+    img_hb = get_high_boost(base, base_PB, A);
+
+    // Otra version
+    cimg_forXY(base, x, y) {
+        // (A − 1)f (x, y) + f (x, y) − PB(f (x, y))
+        double diff = (A - 1) * base(x, y) + img(x, y);
+
+        img_hb_2v(x, y) = (diff > 255) ? 255 : (diff < 0) ? 0 : diff;
+    }
+
+
+    (base, base_PB, img, img_hb, img_hb_2v).display("Base, Pasa Bajos, Pasa Alto y High Boosted");
+
+}
+
 int main (int argc, char* argv[]) {
 
     const char* filename = cimg_option("-i", "../../img/lenna.gif", "Imagen");
 
-    guia3_eje5(filename);
+    guia3_eje6(filename);
 
     return 0;
 }
