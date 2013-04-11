@@ -540,6 +540,7 @@ int main(){
 #if 0 ///Ejercicio 7a
 while(true){
     CImg<unsigned char> imagen("../../../img/earth.bmp");
+    imagen.channel(0);
     transfLinealMouse(imagen); //Realzar las tonalidades bajas y dejar en la diagonal lo anterior.
 }
 #endif
