@@ -283,11 +283,20 @@ void guia3_eje6(const char * filename) {
 
 }
 
+/// Septimo Ejercicio
+void guia3_eje7(const char * filename) {
+
+
+
+}
+
+
+
 int main (int argc, char* argv[]) {
 
     const char* filename = cimg_option("-i", "../../img/lenna.gif", "Imagen");
 
-    guia3_eje6(filename);
+    guia3_eje7(filename);
 
     return 0;
 }
