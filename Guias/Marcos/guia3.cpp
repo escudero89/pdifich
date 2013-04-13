@@ -75,6 +75,73 @@ CImg<unsigned char> normalizar(CImg<int> imagen_entrada){
     return imagen_salida;
 }
 
+CImg<unsigned char> ecualizarLocal(CImg<unsigned char> imagen, int x0,
+                                        int y0, int x1, int y1){
+
+    CImg<unsigned char> base(imagen.get_crop(x0,y0,x1,y1)),
+        ecualizada(base.get_equalize(256));
+
+    (base, ecualizada).display();
+    base.get_histogram(256,0,255).display_graph("Base",3);
+     ecualizada.get_histogram(256,0,255).display_graph("Ecualizado",3);
+
+    return imagen;
+}
+
+
+void ecualizarLocalMouse(CImg<unsigned char> imagen){
+
+
+CImg<unsigned char> sub_img(200,200,3);
+
+    int x0,y0,x1,y1;
+    bool    first = false,
+            second = false;
+    unsigned char rojo[] = {255,255,255};
+
+    CImgDisplay ventana_imagen(imagen, "Seleccione area a analizar",0);
+    ventana_imagen.resize(imagen);
+    while(!ventana_imagen.is_closed()){
+
+        ventana_imagen.wait();
+
+        if(ventana_imagen.button()){
+            if(!first){
+                cout<<"hereeeeee111111"<<endl;
+                x0 = ventana_imagen.mouse_x();
+                y0 = ventana_imagen.mouse_y();
+                cout<<x0<<endl;
+                cout<<y0<<endl;
+                first = true;
+            }
+            else{
+                cout<<"hereeeeee222222"<<endl;
+                x1 = ventana_imagen.mouse_x();
+                y1 = ventana_imagen.mouse_y();
+                cout<<x1<<endl;
+                cout<<y1<<endl;
+                second = true;
+            }
+        }
+
+        if(second){
+            sub_img = ecualizarLocal(imagen,x0,y0,x1,y1);
+            first= second = false;
+            //break;
+        }
+
+    }
+
+    //sub_img = ecualizarLocal(imagen,x0,y0,x1,y1);
+    //sub_img.display();
+    //imagen.draw_rectangle(x0,y0,x1,y1,rojo).display();
+
+
+
+
+
+}
+
 int main(int argc, char *argv[]){
 #if 0   //Ejercicio 1 - inciso 1
     CImg<unsigned char>     imagen_0("../../img/cameraman.tif"),
@@ -246,7 +313,7 @@ int main(int argc, char *argv[]){
 
 #endif
 
-#if 1 ///Ejercicio 6
+#if 0 ///Ejercicio 6
         //Filtrado de Mascara Difusa  f (x,y) - PB(f(x,y))
 
     const char* filename = cimg_option("-i", "../../img/camaleon.tif", "Input Image File");
@@ -268,11 +335,24 @@ int main(int argc, char *argv[]){
      ).display("Original / Mascara difusa / High boost con 1.2",0);
 
 
+#endif
 
 
+#if 1 ///EJERCICIO 7 A
 
 
-        //Filtrado de Alta potencia (High boost)
+const char* filename = cimg_option("-i", "../../img/cuadros.tif", "Input Image File");
+    CImg<int> imagen(filename);
+    imagen.channel(0);
+
+
+    imagen.get_equalize(256).display();
+
+    ecualizarLocalMouse(imagen);
+
+  //ecualizarLocal(imagen, 12, 12, 135, 135);
+// ecualizarLocal(imagen, 374, 376, 497, 499);
+
 
 #endif
     return 0;
