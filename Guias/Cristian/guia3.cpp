@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 
 #include "../../CImg-1.5.4/CImg.h"
@@ -244,7 +245,6 @@ CImg<double> get_high_boost(CImg<double> base, CImg<double> base_PB, double A = 
     }
 
     return img;
-
 }
 
 /// Sexto Ejercicio
@@ -283,10 +283,100 @@ void guia3_eje6(const char * filename) {
 
 }
 
-/// Septimo Ejercicio
-void guia3_eje7(const char * filename) {
+/// A partir de una imagen, me devuelve la matriz de todos los pixeles vecindarios al pixel en (x,y)
+CImg<double> get_neighborhood(CImg<double> base, 
+    int pos_x, int pos_y, unsigned int N, unsigned int M) {
+
+    CImg<double> retorno(N, M);
+
+    double valor_retornado;
+
+    int step_x = N / 2,
+        step_y = M / 2;
+
+    // Recorremos horizontalmente y verticalmente el vecindario
+    for ( int x = pos_x - step_x ; x <= pos_x + step_x ; x++ ) {
+        for ( int y = pos_y - step_y ; y <= pos_y + step_y ; y++ ) {
+            // Si nos vamos de los limites asignamos color 0 (fern)
+            if (x < 0 || y < 0 || x >= base.width() || y > base.height()) {
+                valor_retornado = 0;
+            } else {
+                valor_retornado = base(x, y);
+            }
+
+            retorno(x - pos_x + step_x, y - pos_y + step_y) = valor_retornado;
+        }
+    }
+
+    return retorno;
+}
 
 
+/// Le paso una imagen, retorna la imagen con todos los pixeles equalizados en NxM vecindarios
+CImg<double> get_local_equalization(CImg<double> base, unsigned int N, unsigned int M) {
+
+    CImg<double> resultado_equalization(base),
+        neighborhood(N, M);
+
+    // Recorro cada pixel de la imagen
+    cimg_forXY(base, x, y) {
+
+        // Por cada pixel, saco su vecindario, ecualizo, y guardo su pixel central
+        neighborhood = get_neighborhood(base, x, y, N, M);
+        neighborhood.equalize(256, 0, 255);
+
+        resultado_equalization(x, y) = neighborhood(N/2, M/2);
+    }
+
+    return resultado_equalization;
+}
+
+
+/// Septimo Ejercicio inciso a
+void guia3_eje7_a(const char * filename, unsigned int N, unsigned int M) {
+
+    CImg<double> base(filename);
+
+    (base, get_local_equalization(base, N, M)).display();
+
+}
+
+/// Te devuelve una imagen con high_boost
+CImg<double> get_high_boost_from_base(
+    CImg<double> base,
+    unsigned int N,
+    double array [],
+    double factor_escala,
+    double A = 1) {
+
+    CImg<double> base_PB(get_filter(base, N, array, factor_escala));
+
+    return get_high_boost(base, base_PB, A);
+
+}
+
+/// Septimo Ejercicio inciso b
+void guia3_eje7_b(const char * filename) {
+
+    double array[9] = {
+        1.0, 1.0, 1.0, 
+        1.0, 1.0, 1.0, 
+        1.0, 1.0, 1.0
+    };
+
+    CImg<double> base(filename),
+        potenciada(base), // para expandir oscuros
+        hb(get_high_boost_from_base(base, 3, array, 1.0/9.0, 2));
+
+    // Aplicamos la transformacion raiz para expandir oscuros
+    cimg_forXY(potenciada, x, y) {
+        potenciada(x, y) = pow(potenciada(x, y), 0.5);
+    }
+
+    potenciada.normalize(0, 255);
+
+    (base, potenciada, hb, (potenciada + hb).get_normalize(0, 255))
+        .display("Original, potenciada [gamma = 0.5], high_boost [A = 2], suma ultimas dos");
 
 }
 
@@ -294,9 +384,11 @@ void guia3_eje7(const char * filename) {
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/lenna.gif", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/cuadros.tif", "Imagen");
+    const unsigned int mascara_N = cimg_option("-w", 7, "Mascara Width"),
+                       mascara_M = cimg_option("-h", 7, "Mascara Height");
 
-    guia3_eje7(filename);
+    guia3_eje7_a(filename, mascara_N, mascara_M);
 
     return 0;
 }
