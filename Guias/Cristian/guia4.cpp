@@ -7,7 +7,7 @@ using namespace cimg_library;
 
 /// Primer Ejercicio
 /// INCISO A
-void guia4_eje1_a(const char *filename) {
+void guia4_eje1_a(const char *filename = "../../img/patron.tif") {
 
     CImg<double> base(filename),
         base_hsi(base.get_RGBtoHSI()),
@@ -45,7 +45,7 @@ void guia4_eje1_a(const char *filename) {
 }
 
 /// INCISO B
-void guia4_eje1_b(const char * filename) {
+void guia4_eje1_b(const char * filename = "../../img/pattern.tif") {
 
     CImg<double> base(filename),
         base_hsi(base.get_RGBtoHSI());
@@ -67,11 +67,86 @@ void guia4_eje1_b(const char * filename) {
     (base, base_hsi).display("Normal, complementaria", 0);
 }
 
+///****************************************
+/// Cargar paleta
+///****************************************
+CImg<float> cargar_paleta(const char * filename="../../paletas/gray.pal"){
+
+    CImg<float> paleta(1, 256, 1, 3, 0);
+
+    FILE *fichero;
+    float x0, x1, x2;
+
+    fichero = fopen(filename, "r");
+
+    for(int leidos, i = 1; i <= 256; i++ ) {
+        leidos = fscanf(fichero, "%e\t%e\t%e\n", &x0, &x1, &x2);
+
+        if (leidos) {
+            paleta(0, i - 1, 0, 0) = x0;
+            paleta(0, i - 1, 0, 1) = x1;
+            paleta(0, i - 1, 0, 2) = x2;
+        }
+    }
+
+    return paleta;
+}
+
+// Mapea una imagen con una paleta (paso imagen y la direccion de la paleta)
+CImg<double> get_image_from_pallete(CImg<double> base, const char * filename = "../../paletas/gray.pal" ) {
+
+    CImg<double> paleta(cargar_paleta(filename)),
+        retorno(base.width(), base.height(), base.depth(), 3);
+
+    // Normalizo la base por las dudas
+    base.normalize(0, 255);
+
+    // El retorno siempre tiene 3 canales (RGB)
+    cimg_forXYC(retorno, x, y, c) {
+        retorno(x, y, c) = paleta(0, base(x, y), c);
+    }
+
+    return retorno;
+}
+
+/// EJERCICIO 2
+void guia4_eje2(const char * filename = "../../img/parrot.tif", bool inciso_b = false) {
+
+    CImg<double> base(filename),
+        degradado(256, 256);
+
+    /// INCISO A
+    cimg_forXY(degradado, x, y) {
+        degradado(x, y) = x;
+    }
+
+    // Si estamos en el inciso B trabajamos con la base
+    if (inciso_b) {
+        degradado = base;
+    }
+
+    (degradado, 
+        get_image_from_pallete(degradado, "../../paletas/bone.pal"),
+        get_image_from_pallete(degradado, "../../paletas/cool.pal"),
+        get_image_from_pallete(degradado, "../../paletas/copper.pal"),
+        get_image_from_pallete(degradado, "../../paletas/gray.pal"),
+        get_image_from_pallete(degradado, "../../paletas/hot.pal"),
+        get_image_from_pallete(degradado, "../../paletas/hsv.pal"),
+        get_image_from_pallete(degradado, "../../paletas/jet.pal"),
+        get_image_from_pallete(degradado, "../../paletas/pink.pal"))
+        .display("Base, paletas (bone, cool, copper, gray, hot, hsv, jet, pink)", 0);
+
+    // INCISO C
+    // Lo que haria es convertir primero la imagen a RGB, luego aplicara una transformacion
+    // en el canal R de la forma de un umbral escalon: de 0 a 128 coloco 255, de 129 a 255 coloco 0
+    // lo inverso lo haria en el canal B, y el canal G pondria un valor constante de 0 a todos
+}
+
 int main (int argc, char* argv[]) {
 
     const char* filename = cimg_option("-i", "../../img/patron.tif", "Imagen");
 
-    guia4_eje1_a(filename);
+    guia4_eje2(filename);
 
     return 0;
 }
