@@ -170,13 +170,36 @@ void guia4_eje3(const char * filename = "../../img/rio.jpg", const unsigned char
 
 }
 
+/// EJERCICIO 4
+void guia4_eje4(const char * filename = "../../img/chairs_oscura.tif") {
+
+    CImg<double> base(filename),
+        ecualizada_RGB(base.get_equalize(256, 0, 255)),
+        base_HSI(base.get_RGBtoHSI()),
+        buffer(base.width(), base.height());
+
+    // Agarro el canal de intensidad (es lo que voy a ecualizar no mas)
+    base_HSI.get_shared_channel(2).equalize(256, 0, 1);
+
+    // Volvemos a convertirla en RGB
+    base_HSI.HSItoRGB();
+
+    (ecualizada_RGB, base_HSI).display("Ecualizada desde RGB, y desde HSI ecualizando intensidad", 0);
+
+    // La onda es que si ecualizas solo el canal de intensidad, la saturacion y los colores verdaderos
+    // de la imagen. Sin embargo, la imagen RGB parece mas vivida, ya que al modificar la intensidad
+    // solamente, cambia la "percepcion" que tenemos de la imagen. Para mejorar la calidad visual
+    // de la imagen HSI, se deberia saturar un poquito mas. Mas informacion: ejemplo 6.11 libro
+
+}
+
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/rio.jpg", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/chairs_oscura.jpg", "Imagen");
     
     const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia4_eje3(filename, op1_level_gray);
+    guia4_eje4(filename);
 
     return 0;
 }
