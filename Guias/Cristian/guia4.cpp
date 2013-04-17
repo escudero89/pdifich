@@ -2,6 +2,7 @@
 #include <iostream>
 
 #include "../../CImg-1.5.4/CImg.h"
+#include "funciones.h"
 
 using namespace cimg_library;
 
@@ -170,8 +171,8 @@ void guia4_eje3(const char * filename = "../../img/rio.jpg", const unsigned char
 
 }
 
-/// EJERCICIO 4
-void guia4_eje4(const char * filename = "../../img/chairs_oscura.tif") {
+/// EJERCICIO 4 inciso a
+void guia4_eje4_a(const char * filename = "../../img/chairs_oscura.tif") {
 
     CImg<double> base(filename),
         ecualizada_RGB(base.get_equalize(256, 0, 255)),
@@ -193,13 +194,35 @@ void guia4_eje4(const char * filename = "../../img/chairs_oscura.tif") {
 
 }
 
+/// EJERCICIO 4 inciso b
+void guia4_eje4_b(const char * filename = "../../img/camino.tif") {
+
+    CImg<double> base(filename),
+        acentuada_RGB(cimg_ce::get_image_filtered(base, 'a', 1)),
+        acentuada_HSI(base.get_RGBtoHSI()),
+        intensidad_HSI(cimg_ce::get_image_filtered(acentuada_HSI.get_channel(2), 'a', 1));
+
+    // Acentuamos en el canal de intensidad obviamente :3
+
+    acentuada_HSI = cimg_ce::join_channels(
+        acentuada_HSI.get_channel(0), 
+        acentuada_HSI.get_channel(1),
+        intensidad_HSI.normalize(0, 1));
+
+    acentuada_HSI.HSItoRGB();
+
+    (acentuada_RGB, acentuada_HSI).display("Acentuada RGB y HSI", 0);
+
+    // El color se mantiene original en HSI. Sucede lo mismo que lo explicado anteriormente
+}
+
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/chairs_oscura.jpg", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/camino.tif", "Imagen");
     
     const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia4_eje4(filename);
+    guia4_eje4_b(filename);
 
     return 0;
 }
