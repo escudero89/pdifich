@@ -142,11 +142,41 @@ void guia4_eje2(const char * filename = "../../img/parrot.tif", bool inciso_b = 
     // lo inverso lo haria en el canal B, y el canal G pondria un valor constante de 0 a todos
 }
 
+/// EJERCICIO 3
+// max_gray_water: maximo nivel de gris en el agua, el minimo es 0
+void guia4_eje3(const char * filename = "../../img/rio.jpg", const unsigned char max_gray_water = 33) {
+
+    CImg<double> base(filename),
+        coloreado(base.width(), base.height(), base.depth(), 3); // matriz de color
+
+    base.get_histogram(256).display_graph("Histograma del Rio");
+
+    unsigned char yellow[] = {255, 255, 0};
+
+    cimg_forXY(coloreado, x, y) {
+        
+        for (unsigned int c = 0; c < coloreado.spectrum(); c++) {
+
+            if (base(x, y) <= max_gray_water) {
+                coloreado(x, y, c) = yellow[c];
+            } else {
+                coloreado(x, y, c) = base(x, y);
+            }
+
+        }
+    }
+
+    (base, coloreado).display("Base, coloreado", 0);
+
+}
+
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/patron.tif", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/rio.jpg", "Imagen");
+    
+    const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia4_eje2(filename);
+    guia4_eje3(filename, op1_level_gray);
 
     return 0;
 }
