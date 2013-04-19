@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cmath>
 #include <iostream>
 
@@ -146,6 +147,20 @@ CImg<T> get_image_filtered(CImg<T> base, char tipo_filtro, char version_filtro =
 	CImg<T> retorno(get_filter(base, sqrt(cant_elem), elegido, factor_escala, acoto));
 
 	return retorno;
+}
+
+/// Le pasas una imagen y una mascara: Retorna la imagen con la mascara aplicada
+template <typename T>
+CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara) {
+
+	// Si no es el mismo tamanho, tiramos error.
+	assert(base.is_sameXYZ(mascara));
+
+	cimg_forXYZC(base, x, y, z, c) {
+		base(x, y, z, c) *= mascara(x, y, z);
+	}
+
+	return base;
 }
 
 

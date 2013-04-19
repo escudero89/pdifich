@@ -217,11 +217,14 @@ void guia4_eje4_b(const char * filename = "../../img/camino.tif") {
 }
 
 /// Le pasas una imagen, un centro y un radio de la esfera en el plano R, G, y B. 
- // Devuelve la imagen segmentada
-CImg<double> get_image_segmented(
+ // Devuelve la mascara
+CImg<bool> get_mask_from_RGB(
     CImg<double> base, 
     double centro_R, double centro_G, double centro_B, double radio, 
     char tipo = 's') {
+
+    CImg<bool> mascara(base);
+    mascara.fill(0);
 
     // Recorro cada pixel
     cimg_forXYZ(base, x, y, z) {
@@ -233,21 +236,17 @@ CImg<double> get_image_segmented(
                 c_b = pow(base(x, y, z, 2) - centro_B, 2.0),
 
                 // Mido la distancia a cada centro (pag 333)
-                distancia = pow(c_r + c_g + c_b, 0.5),
+                distancia = pow(c_r + c_g + c_b, 0.5);
 
-                color_gray[] = {50, 50, 50};
-
-            // Esto quiere decir que esta fuera de la esfera (lo engrisecemos)
-            if (distancia > radio) {
-                for (unsigned int k = 0; k < base.spectrum(); k++) {
-                    base(x, y, z, k) = color_gray[k];
-                }
+            // Esto quiere decir que esta dentro de la esfera (la mascara es 1)
+            if (distancia < radio) {
+                mascara(x, y, z) = 1;
             }
 
         }
     }
 
-    return base;
+    return mascara;
 }
 
 
@@ -258,13 +257,72 @@ void guia4_eje5_a(const char * filename = "../../img/futbol.jpg") {
 
     // Estos son valores tomados experimentalmente. NO funcionarian en otra imagen.
     (base, 
-        get_image_segmented(base, 140, 165, 83, 35),
-        get_image_segmented(base, 144, 170, 69, 35)
-        ).display();
+        cimg_ce::apply_mask(base, get_mask_from_RGB(base, 140, 165, 83, 35)),
+        cimg_ce::apply_mask(base, get_mask_from_RGB(base, 144, 170, 69, 35))
+        ).display("Base, Mascara 1 (pico histograma), Mascara 2 (centro energia histograma)", 0);
 
     base.get_channel(0).get_histogram(256).display_graph();
     base.get_channel(1).get_histogram(256).display_graph();
     base.get_channel(2).get_histogram(256).display_graph();
+
+}
+
+/// Le pasas una imagen RGB, y corta un rectangulo en el plano H, S de las componentes que interesan
+ // Retorna la mascara binaria
+CImg<bool> get_mask_from_HS(
+    CImg<double> base, double min_H, double max_H, double min_S, double max_S) {
+
+    base.RGBtoHSI();
+
+    CImg <double> H, S, I;
+    CImg <bool> retorno(base.width(), base.height(), base.depth());
+
+    // Lo llenamos de 0
+    retorno.fill(0);
+
+    H = base.get_channel(0).normalize(0, 360);
+    S = base.get_channel(1).normalize(0, 255);
+
+    // Recorro la imagen
+    cimg_forXYZ(base, x, y, z) {
+        // Si esta DENTRO del rectangulo HS
+        if ((H(x, y, z) < max_H && H(x, y, z) > min_H) && 
+             S(x, y, z) < max_S && S(x, y, z) > min_S) {
+            
+            // Vamos creando la mascara
+            retorno(x, y, z) = 1;
+        }
+    }
+
+    return retorno;
+
+}
+
+/// EJERCICIO 5, inciso B
+void guia4_eje5_b(const char * filename = "../../img/futbol.jpg") {
+
+    CImg<double> base(filename),
+        nueva_imagen;
+
+    CImg<bool> mascara(get_mask_from_HS(base, 66, 86, 77, 160));
+
+    nueva_imagen = cimg_ce::apply_mask(base, mascara);
+
+    // Estos son valores tomados experimentalmente. NO funcionarian en otra imagen.
+    ( base, mascara, nueva_imagen ).display("Base, mascara, nueva imagen", 0);
+}
+
+void guia4_eje5_c(const char * filename = "../../img/futbol.jpg") {
+
+    CImg<double> base(filename),
+        mascaraRGB(cimg_ce::apply_mask(base, get_mask_from_RGB(base, 144, 170, 69, 35))),
+        mascaraHSI(cimg_ce::apply_mask(base, get_mask_from_HS(base, 66, 86, 77, 160)));
+
+    (base, mascaraRGB, mascaraHSI).display("Base, Por Mascara RGB, Por Mascara HSI", 0);
+
+    // La mascara RGB es mas fiable a filtrar colores verdes (los buscados), siendo mucho
+    // mas precisa. Sin embargo, la mascara HSI proporciona un rango mayor de verdes
+    // ya que se basa en el rango del HUE en vez del valor combinado de pixeles RGB.
 
 }
 
@@ -274,7 +332,7 @@ int main (int argc, char* argv[]) {
     
     const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia4_eje5_a(filename);
+    guia4_eje5_c(filename);
 
     return 0;
 }
