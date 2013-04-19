@@ -216,13 +216,65 @@ void guia4_eje4_b(const char * filename = "../../img/camino.tif") {
     // El color se mantiene original en HSI. Sucede lo mismo que lo explicado anteriormente
 }
 
+/// Le pasas una imagen, un centro y un radio de la esfera en el plano R, G, y B. 
+ // Devuelve la imagen segmentada
+CImg<double> get_image_segmented(
+    CImg<double> base, 
+    double centro_R, double centro_G, double centro_B, double radio, 
+    char tipo = 's') {
+
+    // Recorro cada pixel
+    cimg_forXYZ(base, x, y, z) {
+        /// Lo calcula como una esfera
+        if (tipo == 's') {
+            // Saco las distancias de cada pixel por canal (z_r - a_r)
+            double c_r = pow(base(x, y, z, 0) - centro_R, 2.0),
+                c_g = pow(base(x, y, z, 1) - centro_G, 2.0),
+                c_b = pow(base(x, y, z, 2) - centro_B, 2.0),
+
+                // Mido la distancia a cada centro (pag 333)
+                distancia = pow(c_r + c_g + c_b, 0.5),
+
+                color_gray[] = {50, 50, 50};
+
+            // Esto quiere decir que esta fuera de la esfera (lo engrisecemos)
+            if (distancia > radio) {
+                for (unsigned int k = 0; k < base.spectrum(); k++) {
+                    base(x, y, z, k) = color_gray[k];
+                }
+            }
+
+        }
+    }
+
+    return base;
+}
+
+
+/// EJERCICIO 5, inciso A
+void guia4_eje5_a(const char * filename = "../../img/futbol.jpg") {
+
+    CImg<double> base(filename);
+
+    // Estos son valores tomados experimentalmente. NO funcionarian en otra imagen.
+    (base, 
+        get_image_segmented(base, 140, 165, 83, 35),
+        get_image_segmented(base, 144, 170, 69, 35)
+        ).display();
+
+    base.get_channel(0).get_histogram(256).display_graph();
+    base.get_channel(1).get_histogram(256).display_graph();
+    base.get_channel(2).get_histogram(256).display_graph();
+
+}
+
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/camino.tif", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/futbol.jpg", "Imagen");
     
     const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia4_eje4_b(filename);
+    guia4_eje5_a(filename);
 
     return 0;
 }
