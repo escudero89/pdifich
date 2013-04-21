@@ -1,5 +1,6 @@
 #include <iostream>
 #include "../../CImg-1.5.4/CImg.h"
+#include "../../PDI_functions"
 #include <vector>
 #include <cstdlib>
 #include <string>
@@ -45,9 +46,37 @@ Omar.
 
 */
 
+CImg<unsigned char> normalizar(CImg<float> imagen_entrada,int min_in = 0,
+                                                        int max_in = 0,
+                                                        int min_out= 0,
+                                                        int max_out= 255){
+
+    CImg<unsigned char> imagen_salida(imagen_entrada.width(),
+                                      imagen_entrada.height(),
+                                      1,1);
+
+    if(min_in == 0 and max_in == 0){
+        //Obtenemos valores maximos y minimos de la imagen para realizar el mapeo
+        min_in = imagen_entrada.min_max( max_in );
+    }
+
+    //Realizamos mapeo lineal en rango [min_in max_in] => [min_out max_out]
+    cimg_forXY(imagen_entrada,i,j){
+
+        imagen_salida(i,j) = (unsigned char)(((imagen_entrada(i,j) - min_in) * (max_out - min_out))
+                                    /
+                        (max_in - min_in) + min_out);
+    }
+
+    return imagen_salida;
+}
+
+
+
 int main(int argc, char *argv[]){
 
-    //Ejercicio 1
+#if 0     ///          /// EJERCICIO 1 ///          ///
+
     const char* filename = cimg_option("-i", "../../img/patron.tif", "Input Image File");
     CImg<unsigned char> img_original(filename);
     CImg<float> img_hsi(img_original.get_RGBtoHSI());
@@ -59,16 +88,74 @@ int main(int argc, char *argv[]){
      img_original.get_channel(2)
      ).display("Imagen color y sus planos RGB");
 
-     //Imagen color y sus planos HSI
-     img_hsi.display();
+    //Imagen color y sus planos HSI
+     CImg<float>    img_h(img_hsi.get_channel(0)),
+                    img_s(img_hsi.get_channel(1)),
+                    img_i(img_hsi.get_channel(2));
 
      (img_original,
-     img_hsi.get_channel(0),
-     img_hsi.get_channel(1),
-     img_hsi.get_channel(2)
-     ).display("Imagen color y sus planos HSI");
+      img_h, img_s, img_i).display("Imagen color y sus planos HSI");
+
+    ////        Transformamos degradado de azul a rojo:         ////
+     CImg<float> nueva_img_hsi(img_hsi);
+     cimg_forXYZ(nueva_img_hsi,i,j,k){
+        nueva_img_hsi(i,j,0) = img_hsi( img_hsi.width()-1 -i, j, 0);
+     }
+
+    CImg<float> nueva_img_rgb( nueva_img_hsi.get_HSItoRGB() );
+
+    (img_original,
+     img_h,
+     nueva_img_rgb,
+     nueva_img_hsi.get_channel(0)
+    ).display("Reversion, degradado azul a rojo y plano h");
+
+    ////        //////////////////////////////////////          ////
 
 
+
+    ////               Saturacion y brillo maximos              ////
+    cimg_forXYZ(nueva_img_hsi,i,j,k){
+        nueva_img_hsi(i,j,2) = 1;
+        nueva_img_hsi(i,j,1) = 1;
+    }
+
+    nueva_img_rgb = nueva_img_hsi.get_HSItoRGB();
+
+    (img_original,
+     //img_s,
+     nueva_img_rgb,
+     nueva_img_hsi.get_channel(1)
+    ).display("Brillo maximo y plano i");
+    ////        //////////////////////////////////////          ////
+
+
+    ////               Colores complementarios                 ////
+    nueva_img_hsi = img_hsi;
+    cimg_forXYZ(nueva_img_hsi,i,j,k){
+        if( nueva_img_hsi(i,j,0) <= 180){
+            nueva_img_hsi(i,j,0) =  nueva_img_hsi(i,j,0) + 180;
+        }
+        else{
+            nueva_img_hsi(i,j,0) =  nueva_img_hsi(i,j,0) - 180;
+        }
+    }
+
+    nueva_img_rgb = nueva_img_hsi.get_HSItoRGB();
+
+    (img_original,
+     img_h,
+     nueva_img_rgb,
+     nueva_img_hsi.get_channel(0)
+    ).display("Colores complementarios y plano h");
+    ////        //////////////////////////////////////          ////
+
+#endif     ///          /// FIN E1 ///          ///
+
+#if 1     ///          /// EJERCICIO 2 ///          ///
+
+        //cargar_paleta("../../paletas/bone.pal")
+
+#endif     ///          /// FIN E2 ///          ///
     return 0;
 }
-

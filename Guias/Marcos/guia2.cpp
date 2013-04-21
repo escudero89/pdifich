@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../../../CImg-1.5.4/CImg.h"
+#include "../../CImg-1.5.4/CImg.h"
 #include <vector>
 #include <cstdlib>
 #include <string>
@@ -537,16 +537,16 @@ int main(){
 #endif
 
 
-#if 0 ///Ejercicio 7a
+#if 1 ///Ejercicio 7a
 while(true){
-    CImg<unsigned char> imagen("../../../img/earth.bmp");
+    CImg<unsigned char> imagen("../../../ingles1.jpg");
     imagen.channel(0);
     transfLinealMouse(imagen); //Realzar las tonalidades bajas y dejar en la diagonal lo anterior.
 }
 #endif
 
 ///Ejercicio 7c
-#if 1
+#if 0
     CImg<unsigned char> imagen1("../../../img/blister_incompleto.jpg");
     CImg<unsigned char> imagen2("../../../img/blister_incompleto_other.jpg");
     CImg<unsigned char> imagen3("../../../img/blister_completo.jpg");
