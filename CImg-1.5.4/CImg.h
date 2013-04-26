@@ -350,7 +350,7 @@ extern "C" {
 // (http://www.fftw.org)
 //
 // Define 'cimg_use_fftw3' to enable libFFTW3 support.
-//
+#define cimg_use_fftw3 1
 // FFTW3 library may be used to efficiently compute the Fast Fourier Transform
 // of image data, without restriction on the image size.
 // (see method 'CImg[List]<T>::FFT()').
