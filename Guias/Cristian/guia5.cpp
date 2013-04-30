@@ -176,33 +176,69 @@ CImg<double> get_image_from_magn_phse(CImg<double> magnitud, CImg<double> fase) 
     return real_imag.get_FFT(true)[0];
 }
 
-/// EJERCICIO 2
+/// EJERCICIO 2 INCISO 1
 void guia5_eje2_part1(const char * filename) {
 
-    CImg<double> base(filename),
-        procesada(base);
+    CImg<double> 
+        base(filename),
+        procesada(base),
+        magnitud_uno,
+        fase_cero;
 
     // Devuelve real [0]  e imaginaria [1]
     CImgList<> TDF_base = base.get_FFT(),
         magnitud_fase(get_magnitude_phase(TDF_base));
 
-//    complex<double> resolucion = magnitud;// exp(-j * fase);
+    // Magnitud 1
+    procesada.fill(1);
+    magnitud_uno = get_image_from_magn_phse(procesada, magnitud_fase[1]);
 
-    (base, 
+    // Fase 0
+    procesada.fill(0);
+    fase_cero = get_image_from_magn_phse(magnitud_fase[0], procesada);
+
+    (   
+        base, 
         magnitud_fase[0].get_log().get_normalize(0, 255), 
-        magnitud_fase[1], 
-        get_image_from_magn_phse(magnitud_fase[0], magnitud_fase[1])).display();
+        magnitud_fase[1],
+        fase_cero.get_log(),
+        magnitud_uno
+
+    ).display("Base, Magnitud, Fase, Solo Magnitud, Solo Fase", 0);
 
 }
 
+/// EJERCICIO 2 INCISO 2
+void guia5_eje2_part2(const char * filename, const char * oth_file) {
+
+    CImg<double> 
+        img1(filename), 
+        img2(oth_file);
+
+    // Si no son del mismo tamanho, lo hacemos al tamanho de la primera
+    if (!img1.is_sameXYZ(img2)) {
+        img2.resize(img1);
+    }
+
+    CImgList<> 
+        img1_mag_fase(get_magnitude_phase(img1.get_FFT())),
+        img2_mag_fase(get_magnitude_phase(img2.get_FFT())),
+        imgs_mixed(2);
+
+    imgs_mixed[0] = get_image_from_magn_phse(img1_mag_fase[0], img2_mag_fase[1]);
+    imgs_mixed[1] = get_image_from_magn_phse(img2_mag_fase[0], img1_mag_fase[1]);
+
+    (img1, img2, imgs_mixed).display("Original 1, 2, y mezcla [mg1/ph2] y [mg2/ph1]", 0);
+}
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/avioncito.png", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/avioncito.png", "Image");
+    const char* oth_file = cimg_option("-a", "../../img/huang1.jpg", "Another Image");
     
     //const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia5_eje2_part1(filename);
+    guia5_eje2_part2(filename, oth_file);
 
     return 0;
 }
