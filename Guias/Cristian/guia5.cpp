@@ -2,6 +2,7 @@
 // g++ -o guia5.bin guia5.cpp -O0 -lm -lpthread -lX11 -lfftw3
 #include <cassert>
 #include <cmath>
+#include <complex>
 #include <iostream>
 
 #include "../../CImg-1.5.4/CImg.h"
@@ -140,14 +141,67 @@ void guia5_eje1_part3(const char * filename) {
     (base, magn_tdf(base)).display("Base con su espectro de frecuencias");
 }
 
+/// Devuelve la magnitud y la fase en dos imagenes de la CImgList del espectro de fourier
+CImgList<> get_magnitude_phase(CImgList<> fourier) {
+
+    CImgList<> retorno(fourier);
+
+    cimg_forXY(fourier[0], x, y) {
+
+        double magnitud = sqrt(pow(fourier[0](x, y), 2) + pow(fourier[1](x, y), 2)),
+            fase = atan2(fourier[1](x, y), fourier[0](x, y)); // uso atan2, no atan, ver c++ reference
+
+        retorno[0](x, y) = magnitud;
+        retorno[1](x, y) = fase;
+        
+    }
+
+    return retorno;
+}
+
+/// A partir de la imagen de magnitud y fase, las une y retorna la imagen procesada
+CImg<double> get_image_from_magn_phse(CImg<double> magnitud, CImg<double> fase) {
+
+    CImg<double> retorno(magnitud);
+
+    complex<double> j(0, 1);
+
+    cimg_forXY(retorno, x, y) {
+        retorno(x, y) = std::real(magnitud(x, y) * exp(-j * fase(x, y)));
+    }
+
+    return retorno;
+}
+
+/// EJERCICIO 2
+void guia5_eje2_part1(const char * filename) {
+
+    CImg<double> base(filename),
+        procesada(base);
+
+    // Devuelve real [0]  e imaginaria [1]
+    CImgList<> TDF_base = base.get_FFT(),
+        magnitud_fase(get_magnitude_phase(TDF_base));
+
+//    complex<double> resolucion = magnitud;// exp(-j * fase);
+
+
+
+    (base, 
+        magnitud_fase[0].log().get_normalize(0, 255), 
+        magnitud_fase[1], 
+        get_image_from_magn_phse(magnitud_fase[0], magnitud_fase[1])).display();
+
+}
+
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/FFT2_Patrones.png", "Imagen");
+    const char* filename = cimg_option("-i", "../../img/avioncito.png", "Imagen");
     
     //const unsigned char op1_level_gray = cimg_option("-g", 33, "Max Level Gray Water");
 
-    guia5_eje1_part3(filename);
+    guia5_eje2_part1(filename);
 
     return 0;
 }
