@@ -153,24 +153,27 @@ CImgList<> get_magnitude_phase(CImgList<> fourier) {
 
         retorno[0](x, y) = magnitud;
         retorno[1](x, y) = fase;
-        
+
     }
 
     return retorno;
 }
 
-/// A partir de la imagen de magnitud y fase, las une y retorna la imagen procesada
+/// A partir de la imagen de magnitud y fase, las une y retorna la imagen procesada antitransformada
 CImg<double> get_image_from_magn_phse(CImg<double> magnitud, CImg<double> fase) {
 
-    CImg<double> retorno(magnitud);
+    CImgList<> real_imag(2, magnitud.width(), magnitud.height());
 
     complex<double> j(0, 1);
 
-    cimg_forXY(retorno, x, y) {
-        retorno(x, y) = std::real(magnitud(x, y) * exp(-j * fase(x, y)));
+    cimg_forXY(real_imag[0], x, y) {
+        complex<double> resultado = magnitud(x, y) * exp(j * fase(x, y));
+
+        real_imag[0](x, y) = std::real(resultado);
+        real_imag[1](x, y) = std::imag(resultado);
     }
 
-    return retorno;
+    return real_imag.get_FFT(true)[0];
 }
 
 /// EJERCICIO 2
@@ -185,10 +188,8 @@ void guia5_eje2_part1(const char * filename) {
 
 //    complex<double> resolucion = magnitud;// exp(-j * fase);
 
-
-
     (base, 
-        magnitud_fase[0].log().get_normalize(0, 255), 
+        magnitud_fase[0].get_log().get_normalize(0, 255), 
         magnitud_fase[1], 
         get_image_from_magn_phse(magnitud_fase[0], magnitud_fase[1])).display();
 
