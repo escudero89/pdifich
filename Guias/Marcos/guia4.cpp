@@ -1,6 +1,6 @@
 #include <iostream>
 #include "../../CImg-1.5.4/CImg.h"
-#include "../../PDI_functions"
+#include "../../PDI_functions.h"
 #include <vector>
 #include <cstdlib>
 #include <string>
@@ -8,26 +8,26 @@
 using namespace cimg_library;
 using namespace std;
 
-/*
+/* Indicaciones del profe
 Hola a todos,
-Sub√≠ el tp 4 para que empiecen a hacerlo. Les paso algunos tips para resolver los ejercicios.
+SubÌ el tp 4 para que empiecen a hacerlo. Les paso algunos tips para resolver los ejercicios.
 
 Ejercicio 1:
-- Al pasar a HSI usen tipo de dato <float> ya que H tendr√° valores en [0-360] que
+- Al pasar a HSI usen tipo de dato <float> ya que H tendr· valores en [0-360] que
   exceden el 255 de <unsigned char>.
 
 - Para poder interpretar visualmente las componentes H, S e I les conviene normalizar
-  a 0-255 cada componente. Recalco nuevamente que esto es s√≥lo para visualizar e
+  a 0-255 cada componente. Recalco nuevamente que esto es sÛlo para visualizar e
   interpretar, NO para operar.
 
 Ejercicio 2:
-- Estan subidas las paletas de colores en archivos de textos que podr√°n levantar con
-  la funci√≥n cargar_paleta(), que est√° en PDI_functions.h. Incluirlo colocando:
+- Estan subidas las paletas de colores en archivos de textos que podr·n levantar con
+  la funciÛn cargar_paleta(), que est· en PDI_functions.h. Incluirlo colocando:
   #include "../PDI_functions.h", luego del #include <CImg.h>
 
 Ejercicio 5:
-- Para saber si un p√≠xel cae dentro de la esfera de segmentaci√≥n en el modelo RGB, primero
-  computen la distancia entre el p√≠xel y el centro de la esfera (a,b,c) y luego comprueben
+- Para saber si un pÌxel cae dentro de la esfera de segmentaciÛn en el modelo RGB, primero
+  computen la distancia entre el pÌxel y el centro de la esfera (a,b,c) y luego comprueben
   si esa distancia es menor al radio R.
     cimg_forXY(img,x,y){
     D=sqrt(pow(img(x,y,0)-a,2)+pow(img(x,y,1)-b,2)+pow(img(x,y,2)-c,2));
@@ -37,8 +37,8 @@ Ejercicio 5:
         mascara(x,y,2)=1;
     }
 
-Estoy disponible para cualquier consulta a trav√©s del foro o bien personalmente cualquier
-d√≠a de 8 a 17hs. Tambi√©n podemos revisar lo que necesiten el jueves en clase, donde
+Estoy disponible para cualquier consulta a travÈs del foro o bien personalmente cualquier
+dÌa de 8 a 17hs. TambiÈn podemos revisar lo que necesiten el jueves en clase, donde
 empezaremos con Fourier.
 
 Saludos,
@@ -152,10 +152,103 @@ int main(int argc, char *argv[]){
 
 #endif     ///          /// FIN E1 ///          ///
 
-#if 1     ///          /// EJERCICIO 2 ///          ///
+#if 0     ///          /// EJERCICIO 2 ///          ///
+    //Argumentos pasados por consola
+    const char* filename_img = cimg_option("-i", "../../img/cameraman.tif", "Input Image File");
+    const char* filename_paleta = cimg_option("-p", "../../paletas/bone.pal", "Paleta a utilizar");
 
-        //cargar_paleta("../../paletas/bone.pal")
+    //Creacion de imagenes
+    CImg<unsigned char> img_original(filename_img),
+                        img_degrade(256,1,1,1,0);
+    img_original.channel(0);
+    CImg<float> paleta = cargar_paleta(filename_paleta),
+                img_degrade_color(256,1,1,3),
+                img_original_color(img_original.width(),img_original.height(),1,3);
+
+    //Creamos degrade
+    cimg_forX(img_degrade,i){
+        img_degrade(i) = i;
+    }
+
+    //Aplicamos falso color a degrade con paleta
+    cimg_forXY(img_degrade, i, j){
+         img_degrade_color(i,j,0) = paleta(0,img_degrade(i,j),0);
+         img_degrade_color(i,j,1) = paleta(0,img_degrade(i,j),1);
+         img_degrade_color(i,j,2) = paleta(0,img_degrade(i,j),2);
+    }
+
+    //Mostramos ambas imagenes
+    (img_degrade, paleta,  img_degrade_color).display("Aplicacion de paleta");
+
+    //Aplicamos paleta a img_original
+    cimg_forXY(img_original, i, j){
+         img_original_color(i,j,0) = paleta(0,img_original(i,j),0);
+         img_original_color(i,j,1) = paleta(0,img_original(i,j),1);
+         img_original_color(i,j,2) = paleta(0,img_original(i,j),2);
+    }
+
+    (img_original, paleta,  img_original_color).display("Aplicacion de paleta");
+
 
 #endif     ///          /// FIN E2 ///          ///
+
+#if 0     ///          /// EJERCICIO 3 ///          ///
+    //Argumentos pasados por consola
+    const char* filename_img = cimg_option("-i", "../../img/rio.jpg", "Input Image File");
+    const char* rango_superior = cimg_option("-rs", "40", "Rango superior de gris para amarillo");
+
+    //Creacion de imagenes
+    CImg<unsigned char> img_original(filename_img),
+                        img_original_color(img_original.width(),img_original.height(),1,3);
+
+    //Nos quedamos con un solo canal
+    img_original.channel(0);
+
+    //Aplicamos histograma para ver los valores de grises en donde aparecen los rios
+    //vemos que los rios se encuentran dentro de intervalo de grises [0,6]
+    CImgDisplay v_histograma(500,500,"Ventana",0);
+    img_original.get_histogram(256,0,255).display_graph(v_histograma,3);
+
+    //Aplicamos amarillo a los rios
+    int limite = atoi(rango_superior);
+    cout<<limite;
+    getchar();
+    cimg_forXY(img_original, i, j){
+         if(img_original(i,j) >= 0 and img_original(i,j) < limite){
+             img_original_color(i,j,0) = 255;
+             img_original_color(i,j,1) = 255;
+             img_original_color(i,j,2) = 0;
+                                                            }
+         else{
+             img_original_color(i,j,0) = img_original(i,j);
+             img_original_color(i,j,1) = img_original(i,j);
+             img_original_color(i,j,2) = img_original(i,j);
+
+                                                            }
+    }
+
+    (img_original, img_original_color).display("Resaltado de rios en amarillo");
+
+
+#endif     ///          /// FIN E3 ///          ///
+
+#if 0     ///          /// EJERCICIO 4 ///          ///
+    //Argumentos pasados por consola
+    const char* filename_img = cimg_option("-i", "../../img/rio.jpg", "Input Image File");
+    const char* rango_superior = cimg_option("-rs", "40", "Rango superior de gris para amarillo");
+
+    //Creacion de imagenes
+    CImg<unsigned char> img_original(filename_img),
+                        img_original_color(img_original.width(),img_original.height(),1,3);
+
+    //Nos quedamos con un solo canal
+    img_original.channel(0);
+
+
+
+#endif     ///          /// FIN E4 ///          ///
+
+
+
     return 0;
 }

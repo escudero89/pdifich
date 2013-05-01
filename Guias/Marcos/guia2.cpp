@@ -442,7 +442,7 @@ void checkBlister(CImg<unsigned char> imagen){
     //imagen.display();
 }
 
-int main(){
+int main(int argc, char *argv[]){
 #if 0 ///   EJERCICIO 1
    CImg<unsigned char> imagen("../../../img/cameraman.tif");
 
@@ -538,9 +538,12 @@ int main(){
 
 
 #if 1 ///Ejercicio 7a
-while(true){
-    CImg<unsigned char> imagen("../../../ingles1.jpg");
+    const char* filename = cimg_option("-i", "../../img/patron.tif", "Input Image File");
+    CImg<unsigned char> imagen(filename);
     imagen.channel(0);
+
+while(true){
+
     transfLinealMouse(imagen); //Realzar las tonalidades bajas y dejar en la diagonal lo anterior.
 }
 #endif
