@@ -194,5 +194,19 @@ CImg<T> get_filter_from_file(std::string nombre) {
     return salida;
 }
 
+/// Aplica el logaritmo a cada pixel de una imagen (otra robada mas yeeiy :D)
+template<typename T>
+CImg<T> get_log(CImg<T> base) {
+
+    CImg<T> log_base(base.width(), base.height());
+
+    cimg_forXY(base, x, y) {
+        log_base(x, y) = (base(x, y) < 1.0) ? 0.0 : log(base(x, y));
+    }
+
+    return log_base;
+}
+
+
 /// END NAMESPACE
 }

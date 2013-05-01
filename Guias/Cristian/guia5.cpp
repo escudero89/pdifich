@@ -471,18 +471,20 @@ CImg<double> get_img_from_filter(CImg<double> base, CImgList<> magnitud_filtro) 
         fft[1](u, v) = imag(resultado);
     }
 
-    CImg<double> prueba = fft.get_FFT(true)[0];
+    CImg<double> resultado = fft.get_FFT(true)[0];
 
     (
         base,
         magnitud_filtro[0], 
         get_magnitude_phase(base.get_FFT())[0].get_log(), 
-        get_magnitude_phase(prueba.get_FFT())[0].get_log(), 
-        get_magnitude_phase(fft)[1], 
-        prueba
-    ).display("Base, PB, Base con PB", 0);
+        get_magnitude_phase(resultado.get_FFT())[0].get_log(),
+        resultado
+    ).display("Base, PB, magnitud base, magnitud resultado, Base con PB", 0);
+
+    return resultado;
 }
 
+/// EJERCICIO 4 inciso 1-2
 void guia5_eje4_part1(
     const char * filename, 
     const unsigned int option_extra = 10.0,
@@ -497,17 +499,87 @@ void guia5_eje4_part1(
 
 }
 
+/// Genera el filtro H(u, v) para filtrado homomorfico
+CImgList<> get_H_homomorphic(
+    CImg<double> base, 
+    unsigned int cutoff_frecuency, 
+    double gamma_l = 0.5, 
+    double gamma_h = 2.0, 
+    double c = 1.0) {
+
+    CImg<double> H(base.width(), base.height()),
+        D_matriz(get_D_matriz(base));
+
+    cimg_forXY(H, u, v) {
+        double factor = 1 - exp(-c * pow(D_matriz(u, v), 2) / pow(cutoff_frecuency, 2));
+
+        H(u, v) = (gamma_h - gamma_l) * factor + gamma_l;
+    }
+
+    // Y lo deshifteamos
+    H.shift(-H.width()/2, -H.height()/2, 0, 0, 2);
+
+    // La parte imaginaria es cero
+    return (H, H.get_fill(0));
+}
+
+/// Aplica un filtro haciendo filtrado homomorfico
+CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
+
+    // Una imagen f(x, y) = i(x, y) * r(x, y), por lo que aplicamos log para separarlos
+    CImg<double> logarithm(cimg_ce::get_log(base.normalize(0, 255))),
+        filtrado;
+
+    // Ahora los tengo separado teoricamente, aplico fourier (esta dentro de la funcion)
+    // Y aplico el filtro S(u, v) = H(u, v) * F_i(u,v) + H(u,v) * F_r(u,v)
+    filtrado = get_img_from_filter(logarithm, H);
+    filtrado.normalize(0, 1);
+
+    // Ahora tengo que volver a como era antes, aplicando exp
+    filtrado.exp();
+
+    return filtrado.get_normalize(0, 255);
+}
+
+
+/// EJERCICIO 6
+void guia5_eje6(
+    const char * filename, 
+    const unsigned int option_extra,
+    const double option_gl,
+    const double option_gh,
+    const double option_c) {
+
+    CImg<double> base(filename),
+        base_eq(base.get_equalize(256)),
+        filtrado_homom,
+        filtrado_eq_homom;
+
+    CImgList<> homomorfico(get_H_homomorphic(base, option_extra, option_gl, option_gh, option_c));
+
+    filtrado_homom = get_image_homomorphic(base, homomorfico);
+    filtrado_eq_homom = filtrado_homom.get_equalize(256);
+
+    (base, filtrado_homom, filtrado_eq_homom, base_eq)
+        .display("Base, Filtrado, Ecualizado de filtrada, Ecualizado Original");
+
+}
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/avioncito.png", "Image");
+    const char* filename = cimg_option("-i", "../../img/casilla.tif", "Image");
     const char* oth_file = cimg_option("-a", "../../img/huang1.jpg", "Another Image");
     
     const unsigned int option_extra = cimg_option("-o", 33, "Option Extra");
     const unsigned int option_extra_2 = cimg_option("-n", 2, "Option Extra_2");
+    
+    const double option_homomorf_gl = cimg_option("-l", 0.5, "Gamma_l");
+    const double option_homomorf_gh = cimg_option("-h", 2.0, "Gamma_h");
+    const double option_homomorf_c = cimg_option("-c", 1.0, "Sharpness Constant");
 
-    guia5_eje3(filename);
+    //guia5_eje3(filename);
     //guia5_eje4_part1(filename, option_extra, option_extra_2);
+    guia5_eje6(filename, option_extra, option_homomorf_gl, option_homomorf_gh, option_homomorf_gh);
 
     return 0;
 }
