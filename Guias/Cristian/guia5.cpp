@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cmath>
 #include <complex>
+#include <ctime>
 #include <iostream>
 
 #include "../../CImg-1.5.4/CImg.h"
@@ -274,6 +275,128 @@ asi te queda despues del zero padding y ANTES de transformar:
 0 0 0 0 0 0 0 
 0 0 0 0 0 0 0
 */
+/// Recibe una mascara y multiplica la base en el espectro de frecuencia
+CImg<double> get_image_filtered_from_freq(
+    CImg<double> base,
+    CImg<double> mascara) {
+
+    // Pag202 ~ 203
+    unsigned int 
+        A = base.width(),
+        B = base.height(),
+        C = mascara.width(),
+        D = mascara.height(),
+        P = A + C - 1,
+        Q = B + D - 1; 
+
+    // Resizeo con ceros (-100 default spectrum y depth), 0 es para agregar zeros
+    base.resize(P, Q, -100, -100, 0, 0);
+    mascara.resize(P, Q, -100, -100, 0, 0);
+
+    // Ahora si aplico la FFT y multiplico en frecuencia
+    CImgList<> 
+        base_FFT(base.get_FFT()),
+        mascara_FFT(mascara.get_FFT());
+
+    cimg_forXY(base_FFT[0], u, v) {
+        complex<double> 
+            factor1(base_FFT[0](u, v), base_FFT[1](u, v)),
+            factor2(mascara_FFT[0](u, v), mascara_FFT[1](u, v)),
+            resultado = factor1 * factor2;
+
+        base_FFT[0](u, v) = std::real(resultado);
+        base_FFT[1](u, v) = std::imag(resultado);
+    }
+
+    // Antitransformo y tiro a la bosta lo imaginario
+    base = base_FFT.get_FFT(true)[0];
+
+    // Por ultimo, cropeo (pag204) para volver al tamanho original
+    base.crop(C/2, D/2, P - C/2, Q - D/2);
+
+    return base;
+}
+
+void guia5_eje3(const char * filename, const char * oth_file = "filtros/gaussian_21x21.txt") {
+
+    CImg<double> 
+        base(filename),
+        // Obtengo mi filtro gaussiano
+        gaussian(cimg_ce::get_filter_from_file<double>(oth_file)),
+
+        filtrado_espacial,
+        filtrado_incorrecto,
+        filtrado_correcto;
+
+    CImgList<> 
+        fft(base.get_FFT()),
+        filtrado_frecuencial(gaussian.get_FFT());
+
+    // El filtrado espacial es simple convolucion, en frecuencia debo multiplicarlo
+    // pero dado que el filtro frecuencial es obvio mas chico, supongo que querran que
+    // aplique la idea de "periodicidad" intrinseca de fourier
+    unsigned int u_c = 0, v_c = 0;
+
+    // Ahora voy recorriendo y multiplicando, luego antitransformo
+    for (unsigned int v = 0; v < base.height(); v++) {
+        if (v_c >= filtrado_frecuencial[0].height()) {
+            v_c = 0;
+        }
+
+        for (unsigned int u = 0; u < base.width(); u++) {
+            if (u_c >= filtrado_frecuencial[0].width()) {
+                u_c = 0;
+            }
+
+            complex<double> 
+                factor1 = (fft[0](u, v), fft[1](u, v)),
+                factor2 = (filtrado_frecuencial[0](u_c, v_c), filtrado_frecuencial[1](u_c, v_c)),
+                resultado = factor1 * factor2;
+
+            fft[0](u, v) = std::real(resultado);
+            fft[1](u, v) = std::imag(resultado);
+
+            // Aumentamos las coordenadas para el filtro
+            u_c++;
+        }
+        v_c++;
+    }
+
+    filtrado_incorrecto = fft.get_FFT(true)[0];
+
+    /// PARA CALCULAR TIEMPOS
+
+    //inicio y fin son del tipo time t definido en ctime
+    time_t inicio_freq, fin_freq, inicio_spat, fin_spat;
+
+    //Medir el tiempo desde aqui ...
+    inicio_freq = time(NULL);
+
+    /// Ahora vamos a sacar el filtrado correcto, haciendo zero-padding
+    filtrado_correcto = get_image_filtered_from_freq(base, gaussian);
+
+    //... hasta aqui (frecuencia)
+    fin_freq = time(NULL);
+    // Comenzamos el espacial
+    inicio_spat = time(NULL);
+
+    /// Y por ultimo (es lo mismo :P), el filtrado por convolucion de toda la vida
+    filtrado_espacial = base.get_convolve(gaussian);
+
+    //... hasta aqui (espacial)
+    fin_spat = time(NULL);
+
+    std::cout << "Tiempo transcurrido en mascara aplicadas a:\nEspacial: " 
+        << difftime(fin_spat, inicio_spat) << " [seg].\nFrecuencia: "
+        << difftime(fin_freq, inicio_freq) << " [seg].\n";
+
+    // Para la lenna_big (1024 x 1024), tardo 9 seg y 1 seg respectivamente (alta diff)
+
+    (base, filtrado_espacial, filtrado_incorrecto, filtrado_correcto)
+        .display("Base, PB, PB en frecuencia sin padding, PB en frecuencia con zero-padding", 0);
+
+}
+
 
 /// EJERCICIO 4
 /// Obtengo la distancia al punto (x, y) desde cada puntos de una matriz
@@ -383,7 +506,8 @@ int main (int argc, char* argv[]) {
     const unsigned int option_extra = cimg_option("-o", 33, "Option Extra");
     const unsigned int option_extra_2 = cimg_option("-n", 2, "Option Extra_2");
 
-    guia5_eje4_part1(filename, option_extra, option_extra_2);
+    guia5_eje3(filename);
+    //guia5_eje4_part1(filename, option_extra, option_extra_2);
 
     return 0;
 }

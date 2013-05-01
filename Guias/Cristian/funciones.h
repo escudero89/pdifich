@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <string>
 
 #include "../../CImg-1.5.4/CImg.h"
 
@@ -163,6 +164,35 @@ CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara) {
 	return base;
 }
 
+/// Obtengo un filtro desde un archivo de texto (se lo robe a fer :3)
+template <typename T>
+CImg<T> get_filter_from_file(std::string nombre) {
+
+    std::ifstream f(nombre.c_str());
+
+    // Si no pudo abrirlo, problema vieja
+    assert(f.is_open());
+
+    unsigned int filas, columnas;
+    T valor;
+
+    // Los dos primeros valores del renglon determinan mi M x N (filas, columnas)
+    f >> filas;
+    f >> columnas;
+
+    CImg<T> salida(columnas, filas);
+
+    for (unsigned int i = 0; i < filas; i++) { 
+        for (unsigned int j = 0; j < columnas; j++) {
+            f >> valor;
+            salida(j, i) = valor;
+        }
+    }
+
+    f.close();
+    
+    return salida;
+}
 
 /// END NAMESPACE
 }
