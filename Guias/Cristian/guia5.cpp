@@ -527,8 +527,15 @@ CImgList<> get_H_homomorphic(
 CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
 
     // Una imagen f(x, y) = i(x, y) * r(x, y), por lo que aplicamos log para separarlos
-    CImg<double> logarithm(cimg_ce::get_log(base.normalize(0, 255))),
+    CImg<double> 
+        base_normalizada(base.get_normalize(1, 100)),
+        logarithm(cimg_ce::get_log(base_normalizada)),
         filtrado;
+
+    (base_normalizada, base_normalizada.get_equalize(256)).display("Imagen Original, Imagen Ecualizada");
+    CImgDisplay hist_wdw;
+    base_normalizada.get_normalize(0, 255).get_histogram(256, 0, 255).display_graph(hist_wdw, 3);
+    base_normalizada.get_normalize(0, 255).get_equalize(256).get_histogram(256, 0, 255).display_graph(hist_wdw, 3);
 
     // Ahora los tengo separado teoricamente, aplico fourier (esta dentro de la funcion)
     // Y aplico el filtro S(u, v) = H(u, v) * F_i(u,v) + H(u,v) * F_r(u,v)
@@ -557,11 +564,15 @@ void guia5_eje6(
 
     CImgList<> homomorfico(get_H_homomorphic(base, option_extra, option_gl, option_gh, option_c));
 
-    filtrado_homom = get_image_homomorphic(base, homomorfico);
+    filtrado_homom = get_image_homomorphic(base, homomorfico).get_normalize(0, 255);
     filtrado_eq_homom = filtrado_homom.get_equalize(256);
 
-    (base, filtrado_homom, filtrado_eq_homom, base_eq)
-        .display("Base, Filtrado, Ecualizado de filtrada, Ecualizado Original");
+    CImgDisplay hist;
+    filtrado_homom.get_histogram(256, 0, 255).display_graph(hist, 3);
+    filtrado_eq_homom.get_histogram(256, 0, 255).display_graph(hist, 3);
+
+    (base, filtrado_homom, filtrado_eq_homom)
+        .display("Base, Filtrado, Ecualizado de filtrada");
 
 }
 
@@ -570,7 +581,7 @@ int main (int argc, char* argv[]) {
     const char* filename = cimg_option("-i", "../../img/casilla.tif", "Image");
     const char* oth_file = cimg_option("-a", "../../img/huang1.jpg", "Another Image");
     
-    const unsigned int option_extra = cimg_option("-o", 33, "Option Extra");
+    const unsigned int option_extra = cimg_option("-o", 150, "Option Extra");
     const unsigned int option_extra_2 = cimg_option("-n", 2, "Option Extra_2");
     
     const double option_homomorf_gl = cimg_option("-l", 0.5, "Gamma_l");
