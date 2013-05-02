@@ -28,7 +28,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
-#include <CImg.h>
+//#include <CImg.h>
 using namespace std;
 using namespace cimg_library;
 ///****************************************
@@ -46,7 +46,7 @@ CImg<unsigned char> region_growing(CImg<unsigned char> orig,int x,int y,int delt
   // x,y: posición de la semilla
   // delta: define el rango de pertenencia como [semilla-delta/2, semilla+delta/2]
   // etiqueta: nro de la etiqueta, no debe pertenecer al rango
-  
+
   //Basicamente pinto la semilla y la pongo en la cola
   //despues tomo el primer nodo de la cola como referencia (a su vez lo elimino de la cola),
   // miro sus vecinos, los pinto y los agrego al final de la cola
@@ -61,14 +61,14 @@ CImg<unsigned char> region_growing(CImg<unsigned char> orig,int x,int y,int delt
       rango_max=valor+delta/2+delta%2; //para delta impar suma 1 para delta par suma 0
   if (rango_min<0) rango_min=0;
   if (rango_max>255) rango_max=255;
-  
+
   //muestro en pantalla y controlo etiqueta
   cout<<"semilla: "<<valor<<" rango: ["<<rango_min<<","<<rango_max<<"] etiqueta: "<<etiqueta<<endl;
   if (etiqueta>=rango_min && etiqueta<=rango_max){
     cout<<"error: la etiqueta ("<<etiqueta<<") no puede pertenecer al rango, vuelva a elegir"<<endl;
     cout<<"etiqueta: ";
     cin>>etiqueta;
-  }  
+  }
 
 
   CImg<> dest(orig);
@@ -87,7 +87,7 @@ CImg<unsigned char> region_growing(CImg<unsigned char> orig,int x,int y,int delt
     node.y=camino[1];
 
     //elimino el nodo de la cola xq ya lo tengo pintado
-    camino.erase(camino.begin(),camino.begin()+2); 
+    camino.erase(camino.begin(),camino.begin()+2);
 
     //miro a la derecha
     if ((node.x+1 > 0) && (node.x+1 < dest.width()))
@@ -134,14 +134,14 @@ CImg<unsigned char> region_growing(CImg<unsigned char> orig,int x,int y,int delt
 /// Etiquetado de componentes conectadas
 ///****************************************
 CImg<int> label_cc(CImg<int> img, int blanco=1, int nueva_etiqueta=2){
- 
+
   vector<int> equiv(nueva_etiqueta+1,0); //vector de equivalencias
   vector<int> vecinos;                   //vector de etiquetas vecinos superiores e izquierda
   int pos, etiqueta, aux;
 
   cimg_forXY(img,x,y){           // recorro la imagen
     if (img(x,y)==blanco){       // si es blanco
-      vecinos.clear();           // inicializo 
+      vecinos.clear();           // inicializo
       if (x && y)                // si x no es borde izq e y no es borde superior miro el vecino sup izq
         if (img(x-1,y-1)!=0)  vecinos.push_back(img(x-1,y-1)); // si tiene etiqueta la guardo
       if (y)                     // si y no es borde superior miro vecino superior
@@ -160,7 +160,7 @@ CImg<int> label_cc(CImg<int> img, int blanco=1, int nueva_etiqueta=2){
           if (vecinos[i]!=vecinos[i+1]){ // si hay diferentes etiquetas en el vecindario anoto
             etiqueta=vecinos[i];
             pos=vecinos[i+1];
-            if (pos<etiqueta){ // en la pos de la mayor etiqueta anoto el valor de la menor 
+            if (pos<etiqueta){ // en la pos de la mayor etiqueta anoto el valor de la menor
               aux=etiqueta;
               etiqueta=pos;
               pos=aux;
@@ -168,20 +168,20 @@ CImg<int> label_cc(CImg<int> img, int blanco=1, int nueva_etiqueta=2){
             if (equiv[pos]!=etiqueta){ // si tengo una entrada en esa pos reviso la cadena
               if (equiv[pos]!=pos){
                 aux=etiqueta;
-                etiqueta=equiv[pos];     
-                pos=aux; 
+                etiqueta=equiv[pos];
+                pos=aux;
                 while (equiv[pos]!=pos)
                   pos=equiv[pos];
                if (equiv[pos]<etiqueta)
                   etiqueta=equiv[pos];
               }
-              equiv[pos]=etiqueta;          
+              equiv[pos]=etiqueta;
             }
           }
       }
       img(x,y)=vecinos.front(); // asigno etiqueta
     }
-  } 
+  }
   img.display("Primera Pasada");
 
   // Muestro como quedo la tabla
@@ -199,7 +199,7 @@ CImg<int> label_cc(CImg<int> img, int blanco=1, int nueva_etiqueta=2){
           etiqueta=equiv[etiqueta];
         img(x,y)=etiqueta;
       }
-  
+
   return img;
 }
 
@@ -211,13 +211,13 @@ CImg<double> hough(CImg<double> img, bool inverse=false) {
   CImg<double> iHough(img); iHough.fill(0.0);
   const unsigned M = img.width(),
                  N = img.height();
-  
+
   double max_rho = sqrt(float(pow(N-1,2)+pow(M-1,2))), //maximo valor posible de radio se da en la diagonal pcipal
          step_rho = 2.*max_rho/(N-1), //paso en eje rho (rho=[-max_rho , max_rho])
          step_theta = M_PI/(M-1),     //paso en eje theta (M_PI=pi) (theta=[-90,90])
          rho, theta;
-	 
-  if (!inverse){ 
+
+  if (!inverse){
     int r;  // radio mapeado en los N pixeles
     cimg_forXY(img,y,x){
       if (img(y,x) > 0.5)
@@ -225,9 +225,9 @@ CImg<double> hough(CImg<double> img, bool inverse=false) {
           theta=t*step_theta-M_PI/2;  // mapea t en [0,M-1] a t en [-90,90]
           rho=x*cos(theta)+y*sin(theta); // calcula rho para cada theta
           r=floor((rho+max_rho)/step_rho+.5); // mapea r en [-max_rho , max_rho] a r en [0,N-1] el floor(r+.5) sirve para redondear
-          iHough(t,r)+= 1;               // suma el acumulador     
+          iHough(t,r)+= 1;               // suma el acumulador
         }
-    } 
+    }
   }else{
     const double blanco[1] = {255.f};
     float x0, x1, y0, y1;
@@ -238,7 +238,7 @@ CImg<double> hough(CImg<double> img, bool inverse=false) {
         if (theta>-M_PI/2 && theta<M_PI/2){
 	  y0=0; y1=M-1;
           x0=rho/cos(theta);      // calcula y para y=0
-          x1=rho/cos(theta)-(M-1)*tan(theta); // calcula y para y=M-1	  
+          x1=rho/cos(theta)-(M-1)*tan(theta); // calcula y para y=M-1
 	}else{
 	  x0=0; x1=N-1;
           y0=rho/sin(theta);      // calcula y para x=0
@@ -249,7 +249,7 @@ CImg<double> hough(CImg<double> img, bool inverse=false) {
       }
     }
   }
-  return iHough; 
+  return iHough;
 }
 
 ///****************************************
@@ -269,13 +269,13 @@ void generar_filtro_ideal256(float m[][NFilas256], int R) {
 ///****************************************
 CImg<float> cargar_paleta(const char* filename="../../paletas/gray.pal"){
   CImg<float> paleta(1,256,1,3,0);
-  
+
   FILE *fichero;
   float x0, x1, x2;
   int i, leidos;
-  
+
   fichero = fopen( filename, "r" );
-  
+
   for( i=1; i<=256; i++ )
   {
     leidos=fscanf( fichero, "%e\t%e\t%e\n", &x0, &x1, &x2);
@@ -285,7 +285,7 @@ CImg<float> cargar_paleta(const char* filename="../../paletas/gray.pal"){
       paleta(0,i-1,0,2)=x2;
     }
   }
-  
+
   return paleta;
 }
 
@@ -301,7 +301,7 @@ CImg<double> magn_tdf(CImg<double> image,bool centrada=true,const char* palname=
   int mm=preal.height();
   CImg<double> magnitud(nn,mm), magnitud_paleta(nn,mm,1,3,0);
   for (int i=0; i<nn; i++)
-    for (int j=0; j<mm; j++) 
+    for (int j=0; j<mm; j++)
       magnitud(i,j)=log(sqrt(pow(double(preal(i,j)),2)+pow(double(pimag(i,j)),2.))+0.000001);
   magnitud.normalize(0,255);
   if (centrada)
@@ -315,7 +315,7 @@ CImg<double> magn_tdf(CImg<double> image,bool centrada=true,const char* palname=
       magnitud_paleta(i,j,0,1)=255*paleta(0,int(floor(magnitud(i,j))),0,1);
       magnitud_paleta(i,j,0,2)=255*paleta(0,int(floor(magnitud(i,j))),0,2);
     }
-  }	
+  }
   return magnitud_paleta;
 }
 
@@ -328,22 +328,22 @@ void draw_3D_image(CImg<unsigned char> imagen, const float sigma=1.0f, const flo
   // Init data
   const CImg<unsigned char> img = imagen.blur(sigma).resize(-100,-100,1,3);
   const CImg<unsigned char> norm = img.get_norm().normalize(0,255);
-   
+
   CImgList<unsigned int> primitives;
   CImgList<unsigned char> colors;
   const CImg<> points = img.get_elevation3d(primitives,colors,norm*-ratioz);
-   
+
   // Compute image isophotes.
   std::fprintf(stderr,"\n- Compute image isophotes"); std::fflush(stderr);
   CImgList<unsigned int> isoprimitives;
   CImgList<unsigned char> isocolors;
   CImg<> isopoints;
-   
+
   for (unsigned int i = 0; i<255; i+=di) {
     CImgList<> prims;
     const CImg<> pts = norm.get_isoline3d(prims,(float)i);
     isopoints.append_object3d(isoprimitives,pts,prims);
-  }   
+  }
   cimglist_for(isoprimitives,l) {
     const unsigned int i0 = isoprimitives(l,0);
     const float x0 = isopoints(i0,0), y0 = isopoints(i0,1);
@@ -354,7 +354,7 @@ void draw_3D_image(CImg<unsigned char> imagen, const float sigma=1.0f, const flo
     isocolors.insert(CImg<unsigned char>::vector(r,g,b));
   }
   cimg_forX(isopoints,ll) isopoints(ll,2) = -ratioz*norm.linear_atXY(isopoints(ll,0),isopoints(ll,1));
-  
+
   // Enter event loop
   std::fprintf(stderr,"\n- Enter interactive loop.\n\n"
 		      "Reminder : \n"
@@ -366,7 +366,7 @@ void draw_3D_image(CImg<unsigned char> imagen, const float sigma=1.0f, const flo
   CImgDisplay disp(800,600,title,0);
   unsigned int rtype = 2;
   CImg<float> pose = CImg<float>::identity_matrix(4);
-   
+
   while (!disp.is_closed()) {
     const unsigned char white[3]={ 255, 255, 255 };
     CImg<unsigned char> visu(disp.width(),disp.height(),1,3,0);
@@ -385,7 +385,7 @@ void draw_3D_image(CImg<unsigned char> imagen, const float sigma=1.0f, const flo
       break;
       default: rtype = (rtype+1)%7; break;
     }
-  } 
+  }
 }
 
 
