@@ -207,6 +207,5 @@ CImg<T> get_log(CImg<T> base) {
     return log_base;
 }
 
-
 /// END NAMESPACE
 }
