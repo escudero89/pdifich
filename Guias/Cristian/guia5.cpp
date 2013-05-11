@@ -275,7 +275,8 @@ asi te queda despues del zero padding y ANTES de transformar:
 0 0 0 0 0 0 0 
 0 0 0 0 0 0 0
 */
-/// Recibe una mascara y multiplica la base en el espectro de frecuencia
+
+/// Recibe una mascara y multiplica la base en el espectro de frecuencia haciendo zero padding
 CImg<double> get_image_filtered_from_freq(
     CImg<double> base,
     CImg<double> mascara) {
@@ -573,6 +574,57 @@ void guia5_eje6(
 
     (base, filtrado_homom, filtrado_eq_homom)
         .display("Base, Filtrado, Ecualizado de filtrada");
+
+}
+
+/// A partir de una mascara, le hago zero padding (necesito img base) por referencia
+// Retorno las coordenadas para hacer el cropeo
+double[] mask_zero_padding(CImg<double> &base, CImg<double> &mascara) {
+
+    // Pag202 ~ 203
+    unsigned int 
+        A = base.width(),
+        B = base.height(),
+        C = mascara.width(),
+        D = mascara.height(),
+        P = A + C - 1,
+        Q = B + D - 1; 
+
+    // Resizeo con ceros (-100 default spectrum y depth), 0 es para agregar zeros
+    base.resize(P, Q, -100, -100, 0, 0);
+    mascara.resize(P, Q, -100, -100, 0, 0);
+
+    // Por ultimo, cropeo tiene las coordenadas para cropear la base (x0, y0, x1, y1)
+    double cropeo [] = {
+        C/2, D/2, 
+        P - C/2, Q - D/2
+    };
+
+    return cropeo;
+}
+
+
+/// EJERCICIO 7 complementario
+void guia5_eje7(const char * filename, 
+    unsigned int A = 1, 
+    unsigned int a = 1, 
+    unsigned int b = 2) { 
+
+    CImg<double> base(filename);
+
+    double PA[] = {
+        0.0, -1.0, 0.0,
+        -1.0, 4.0, -1.0,
+        0.0, -1.0, 0.0
+    }, 
+    cropeo[];
+
+    cropeo = mask_zero_padding(base, PA);
+
+    CImgList<> base_FFT(base.get_FFT());
+    CImgList<> PA_FFT(PA.get_FFT());
+    CImgList<> H_HB((A - 1) + PA_FFT);
+    CImgList<> H_eaf(a + b * PA_FFT);
 
 }
 
