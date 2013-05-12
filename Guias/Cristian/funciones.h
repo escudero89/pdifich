@@ -207,5 +207,131 @@ CImg<T> get_log(CImg<T> base) {
     return log_base;
 }
 
+/// Obtengo la distancia al punto (x, y) desde cada punto de base, o al punto ubicado
+// en (x - x0, v - v0) y (x + x0, v + v0), siendo que este separado del centro (para notch-filters)
+template<typename T>
+CImg<T> get_D_matriz(CImg<T> base, int x = -1, int y = -1, int x0 = 0, int y0 = 0) {
+
+    CImg<T> D_matriz(base.width(), base.height());
+
+    // Si no especificamos el punto (-1, -1), toma el centro de la matriz
+    if (x == -1 && y == -1) {
+        x = D_matriz.width() / 2;
+        y = D_matriz.height() / 2;
+    } 
+
+    cimg_forXY(D_matriz, u, v) {
+        D_matriz(u, v) = pow(pow(u - x + x0, 2) + pow(v - y + y0, 2), 0.5);
+    }
+
+    return D_matriz;
+}
+
+///#################################################################################//
+/// Devuelve la magnitud y la fase en dos imagenes de la CImgList del espectro de fourier
+template<typename T> CImgList<> get_magnitude_phase(CImgList<> fourier) {
+
+    CImgList<> retorno(fourier);
+
+    cimg_forXY(fourier[0], x, y) {
+
+        T magnitud = sqrt(pow(fourier[0](x, y), 2) + pow(fourier[1](x, y), 2));
+        T fase = atan2(fourier[1](x, y), fourier[0](x, y)); // uso atan2, no atan, ver c++ reference
+
+        retorno[0](x, y) = magnitud;
+        retorno[1](x, y) = fase;
+
+    }
+
+    return retorno;
+}
+
+/// A partir de la magnitud y fase, obtiene la imagen en componentes complejas
+template<typename T> CImgList<> get_fft_from_magn_phse(CImg<T> magnitud, CImg<T> fase) {
+    CImgList<> real_imag(2, magnitud.width(), magnitud.height());
+
+    complex<T> j(0, 1);
+
+    cimg_forXY(real_imag[0], x, y) {
+        complex<T> resultado = magnitud(x, y) * exp(j * fase(x, y));
+
+        real_imag[0](x, y) = std::real(resultado);
+        real_imag[1](x, y) = std::imag(resultado);
+    }
+
+    return real_imag;
+}
+
+/// Version sobrecargado de lo anterior
+CImgList<>  get_fft_from_magn_phse(CImgList<> magnitud_fase) {
+    return get_fft_from_magn_phse(magnitud_fase[0], magnitud_fase[1]);
+}
+
+/// A partir de la imagen de magnitud y fase, las une y retorna la imagen procesada antitransformada
+template<typename T> CImg<T> get_image_from_magn_phse(CImg<T> magnitud, CImg<T> fase) {
+    return get_fft_from_magn_phse(magnitud, fase).get_FFT(true)[0];
+}
+
+/// Version sobrecargado de lo anterior
+template<typename T> CImg<T> get_image_from_magn_phse(CImgList<> magnitud_fase) {
+    return get_image_from_magn_phse(magnitud_fase[0], magnitud_fase[1]);
+}
+///#################################################################################//
+
+/// Retorno una convolucion de una imagen con un filtro trabajando en el espectro de frec
+template<typename T> 
+CImg<T> get_img_from_filter(CImg<T> base, CImgList<> filtro) {
+
+    // Obtengo la transformada y su magnitud/fase
+    CImgList<> fft = base.get_FFT();
+
+    // Multiplico por el filtro
+    cimg_forXY(fft[0], u, v) {
+        complex<T> 
+            part1(fft[0](u, v), fft[1](u, v)),
+            part2(filtro[0](u, v), filtro[1](u, v)),
+            resultado = part1 * part2;
+        
+        fft[0](u, v) = real(resultado);
+        fft[1](u, v) = imag(resultado);
+    }
+
+    CImg<T> resultado = fft.get_FFT(true)[0];
+
+    (
+        base,
+        filtro[0], 
+        get_magnitude_phase<double>(base.get_FFT())[0].get_log(), 
+        get_magnitude_phase<double>(resultado.get_FFT())[0].get_log(),
+        resultado
+    ).display("Base, PB, magnitud base, magnitud resultado, Base con PB", 0);
+
+    return resultado;
+}
+
+/// Me fusiona dos imagenes complejas (fusiona, NO suma, se queda con el valor mas grande)
+// El ultimo parametro es para preguntar que tiene mas ponderancia (valores altos o bajos)
+CImgList<> fusion_complex_images(CImgList<> f1, CImgList<> f2, bool lower = false) {
+    // Siempre que sean del mismo tamanho
+    assert(f1[0].is_sameXYZ(f2[0]));
+
+    CImgList<> retorno(f1);
+
+    cimg_forXYZ(f1[0], u, v, z) {
+        // Nos quedamos con el mas grande de ambos
+        if (!lower) {
+            retorno[0](u, v, z) = (f1[0](u, v, z) > f2[0](u, v, z)) ? f1[0](u, v, z) : f2[0](u, v, z);
+            retorno[1](u, v, z) = (f1[1](u, v, z) > f2[1](u, v, z)) ? f1[1](u, v, z) : f2[1](u, v, z);
+        // con el mas bajo
+        } else {
+            retorno[0](u, v, z) = (f1[0](u, v, z) < f2[0](u, v, z)) ? f1[0](u, v, z) : f2[0](u, v, z);
+            retorno[1](u, v, z) = (f1[1](u, v, z) < f2[1](u, v, z)) ? f1[1](u, v, z) : f2[1](u, v, z);
+        }
+    }
+
+    return retorno;
+}
+
+
 /// END NAMESPACE
 }

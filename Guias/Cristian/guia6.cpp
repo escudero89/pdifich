@@ -133,14 +133,15 @@ CImg<double> apply_mean(
     int n = 3) {
 
     // Mi ventana
+    CImg<double> procesada(base);
     CImg<double> S;
 
     // Para determinar el tamanho de las ventanas
     int step_x = m / 2;
     int step_y = n / 2;
 
-    // Recorro la base y voy tomando ventanas
-    cimg_forXY(base, x, y) {
+    // Recorro la base y voy tomando ventanas (recorro por espectro tambien)
+    cimg_forXYC(base, x, y, c) {
 
         double pixel_procesado;
 
@@ -150,8 +151,8 @@ CImg<double> apply_mean(
         int x1 = (x + step_x >= base.width()) ? base.width() - 1 : x + step_x;
         int y1 = (y + step_y >= base.height()) ? base.height() - 1 : y + step_y;
 
-        // Obtengo la ventana S
-        S = base.get_crop(x0, y0, x1, y1);
+        // Obtengo la ventana S (en cada canal)
+        S = base.get_crop(x0, y0, 0, c, x1, y1, 0, c);
 
         // Aplico el filtro media geometrica
         if (tipo_filtro == 'g') {
@@ -170,11 +171,11 @@ CImg<double> apply_mean(
             pixel_procesado = apply_alpha_trimmed_mean(S, factor);
         }
 
-        base(x, y) = pixel_procesado;
+        procesada(x, y, c) = pixel_procesado;
 
     }
 
-    return base;
+    return procesada;
 
 }
 
@@ -216,15 +217,92 @@ void guia6_eje2(
     std::cout << "ECM ord_midpnt : " << base.MSE(ord_midpnt) << endl;
     std::cout << "ECM ord_alphtr : " << base.MSE(ord_alphtr) << endl;
 
-    (ruidosa, media_geom, media_cohm, ord_median, ord_midpnt, ord_alphtr)
-        .display("Base con ruido impulsivo/gaussiano, geometrica, contra-armonica, mediana, midpoint, alpha-trimmed", 0);
+    // Para poder normalizar la salida
+    CImgList<> coleccion((ruidosa, media_geom, media_cohm, ord_median, ord_midpnt, ord_alphtr));
+    CImgDisplay ventana(coleccion, "Base con ruido impulsivo/gaussiano, geometrica, contra-armonica, mediana, midpoint, alpha-trimmed", 0);
+
+    while (!ventana.is_closed() && !ventana.is_keyQ() ) {};
+
+    coleccion.display("Displayed", 0);
 
     // Conclusiones: el ruido sal y pimienta me jode todo, excepto el median y alphtr
+    /// Ante ruido gaussiano varianza=20 || impulsivo var=10 || ambos [grises.jpg (sangre.jpg)]
+
+    // ECM media_geom : 97.843 (120.56) || 264.815 (331.562) || 6918.96 (7324.09)
+    // ECM media_cohm : 105.652 (140.371) || 972.399 (260.08) || 2582.82 (782.567)
+    // ECM ord_median : 79.9874 (140.299) || 23.3535 (67.7683) || 137.89 (182.15)
+    // ECM ord_midpnt : 136.547 (185.093) || 2447.99 (1066.42) || 3554.6 (1835.38)
+    // ECM ord_alphtr : 74.2385 (119.036) || 48.8281 (86.6234) || 169.474 (189.853)
+
+    /// En promedio el que mejor se comporto fue el de mediana, seguido por el alfa_trimmed
+    /// Ante la aparicion del impulsivo, se mueren los de no-ordenamiento y el midpoint
+}
+
+// Devuelve un filtro notch, del tamanho de la base (u0 y v0 distancia desde el centro)
+CImgList<> notch_filter(CImg<double> base, double cutoff_freq, int u0, int v0, bool is_passband = false) {
+
+    CImg<double> D1 = cimg_ce::get_D_matriz(base, -1, -1, -u0, -v0);
+    CImg<double> D2 = cimg_ce::get_D_matriz(base, -1, -1, u0, v0);
+
+    CImg<double> H(base.width(), base.height());
+
+    cimg_forXY(H, u, v) {
+        // Si esta dentro del radio D0 (cutoff_freq), es 1, sino 0
+        H(u, v) = ( D1(u, v) <= cutoff_freq || D2(u, v) <= cutoff_freq) ? is_passband : !is_passband;
+    }
+
+    // Y desshifteo porque asi es la vida
+    H.shift(-H.width()/2, -H.height()/2, 0, 0, 2);
+
+    // La componente imaginaria es 0
+    return (H, H.get_fill(0));
+}
+
+/// EJERCICIO 4
+void guia6_eje4(
+    const char * filename = "../../img/img_degradada.tif",
+    const char * filename_original = "../../img/img.tif",
+    unsigned int D0 = 20,  // Cutoff frecuency
+    unsigned int x0 = 199, // Puntos donde estan los focos del ruido
+    unsigned int y0 = 219) {
+
+    CImg<double> base(filename);
+    CImg<double> original(filename_original);
+    CImg<double> restaurada;
+    CImg<double> solo_ruido;
+
+    (base, magn_tdf(base)).display("Base y Magnitud, para inspeccionar", 0);
+
+    int distancia_al_centro_x = x0 - floor(base.width() / 2.0);
+    int distancia_al_centro_y = y0 - floor(base.height() / 2.0);
+
+    // Por analisis, veo que esta el ruido en los puntos (58;38) .. (199; 219) [ptos intermedios esquinas]
+    CImgList<> nf1(notch_filter(base, D0, distancia_al_centro_x, distancia_al_centro_y));
+    CImgList<> nf2(notch_filter(base, D0, distancia_al_centro_x, -distancia_al_centro_y));
+    
+    CImgList<> nf1p(notch_filter(base, D0, distancia_al_centro_x, distancia_al_centro_y, true));
+    CImgList<> nf2p(notch_filter(base, D0, distancia_al_centro_x, -distancia_al_centro_y, true));
+
+    CImgList<> nf12(cimg_ce::fusion_complex_images(nf1, nf2, true));
+    CImgList<> nf12p(cimg_ce::fusion_complex_images(nf1p, nf2p));
+
+    // Aplico el filtro notch para eliminar dos de los puntos
+    restaurada = cimg_ce::get_img_from_filter(base, nf12);
+    solo_ruido = cimg_ce::get_img_from_filter(base, nf12p);
+
+    // Ahora mostramos ambas
+    std::cout << "MSE original vs restaurada: " << original.MSE(restaurada) << std::endl;
+
+    (original, base, restaurada, solo_ruido).display("Original, Degradada, Restaurada y Solo Ruido", 0);
+
+    // Cualitativamente la imagen ha mejorado mucho, pero cuantitativamente (MSE) todavia hay
+    // una gran "diferencia" en valores pixel a pixel
 }
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/sangre.jpg", "Image");
+    const char* filename = cimg_option("-i", "../../img/img_degradada.tif", "Image");
+    const char* filename_original = cimg_option("-o", "../../img/img.tif", "Image");
 
     const double opt_1 = cimg_option("-g", 1.0, "Gaussian");
     const double opt_2 = cimg_option("-u", 1.0, "Uniforme");
@@ -233,8 +311,13 @@ int main (int argc, char* argv[]) {
     const double opt_4 = cimg_option("-q", 1.0, "Orden");
     const double opt_5 = cimg_option("-d", 2.0, "Distancia para el alpha-trimmed");
     
+    const unsigned int opt_6 = cimg_option("-c", 10, "CutOff Frequency");
+    const unsigned int opt_7 = cimg_option("-x", 199, "Punto x0");
+    const unsigned int opt_8 = cimg_option("-y", 219, "Punto y0");
+    
     //guia6_eje1(filename, opt_1, opt_2, opt_3);
-    guia6_eje2(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
+    //guia6_eje2(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
+    guia6_eje4(filename, filename_original, opt_6, opt_7, opt_8);
 
     return 0;
 }
