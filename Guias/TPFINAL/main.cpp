@@ -12,6 +12,22 @@
 using namespace cimg_library;
 using namespace std;
 
+/// Le paso 3 imagenes distintas (con un canal cada una), y me retorna una imagen combinada de estas
+CImg<double> join_channels(CImg<double> canal_1, CImg<double> canal_2 = CImg<double>(), CImg<double> canal_3 = CImg<double>()) {
+
+	CImg<double> base(canal_1);
+
+	if (!canal_2.is_empty()) {
+		base.append(canal_2, 'c');
+
+		if (!canal_3.is_empty()) {
+			base.append(canal_3, 'c');
+		}
+	}
+
+	return base;
+}
+
 /// Retorno una convolucion de una imagen con un filtro trabajando en el espectro de frec
 CImg<double> get_img_from_filter(CImg<double> base, CImgList<double> filtro) {
 
@@ -191,11 +207,15 @@ void nighttimeEnhacement(   const char* day_file,
         f >> image_file;
 
         CImg<double> image(image_file.c_str());
-        CImg<double> procesado(denighting(image, ratio, option_fc, option_gl, option_gh, option_c ));
+        image.RGBtoHSI();
+        CImg<double> intensidad(denighting(image.get_channel(2), ratio, option_fc, option_gl, option_gh, option_c ));
 
-        procesado.get_shared_channel(2).normalize(0, 1);
-        procesado.HSItoRGB();
-        procesado.save("img_out/resultado.png", contador);
+        intensidad.normalize(0, 1);
+        (image.get_channel(0), image.get_channel(1), image.get_channel(2), intensidad).display();
+        image = join_channels(image.get_channel(0), image.get_channel(1), intensidad);
+        (image.get_channel(0), image.get_channel(1), image.get_channel(2)).display();
+        image.HSItoRGB();
+        image.save("img_out/resultado.png", contador);
 
         contador++;
     }
