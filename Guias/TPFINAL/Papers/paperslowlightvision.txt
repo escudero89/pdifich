@@ -1,0 +1,33 @@
+--------------------------------------------------
+Low complexity contrast enhancement algorithm for nighttime visual surveillance
+
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?tp=&arnumber=5687158&contentType=Conference+Publications&queryText%3DNighttime+Image+Enhancement
+--------------------------------------------------
+Denighting: Enhancement of nighttime images for a surveillance camera
+
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?tp=&arnumber=4761424&contentType=Conference+Publications&queryText%3DNighttime+Image+Enhancement
+--------------------------------------------------
+Context Enhancement of Nighttime Surveillance by Image Fusion
+
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?tp=&arnumber=1699053&contentType=Conference+Publications&queryText%3DNighttime+Image+Enhancement
+--------------------------------------------------
+Denighting: Enhancement of nighttime images for a surveillance camera:
+
+http://www.researchgate.net/publication/224375200_Denighting_Enhancement_of_nighttime_images_for_a_surveillance_camera
+http://ieeexplore.ieee.org/xpl/login.jsp?tp=&arnumber=4761424&url=http%3A%2F%2Fieeexplore.ieee.org%2Fiel5%2F4740202%2F4760915%2F04761424.pdf%3Farnumber%3D4761424
+--------------------------------------------------
+Illumination-based nighttime video contrast enhancement using genetic algorithm
+
+http://link.springer.com/content/pdf/10.1007%2Fs11042-012-1226-6.pdf
+--------------------------------------------------
+A video-based support system for nighttime navigation in semi-structured environments
+
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?tp=&arnumber=1352959&contentType=Conference+Publications&queryText%3DNighttime+Image+Enhancement
+--------------------------------------------------
+The vehicle edge detection based on homomorphism filtering and fuzzy enhancement in night-time environments
+
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?tp=&arnumber=5658502&contentType=Conference+Publications&queryText%3DNighttime+Image+Enhancement
+--------------------------------------------------
+A predicted compensation model of human vision system for low-light image
+
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?tp=&arnumber=5647250&contentType=Conference+Publications&queryText%3Dlow+light+vision

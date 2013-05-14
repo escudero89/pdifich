@@ -15,7 +15,7 @@ using namespace cimg_library;
 /// Dibuja una recta en una posicion pos, horizontal o vertical
 CImg<bool> art_draw_line(CImg<bool> base, unsigned int pos = 0, bool horizontal = false) {
 
-    unsigned int 
+    unsigned int
         x0 = (horizontal) ? 0 : pos,
         x1 = (horizontal) ? base.width() : x0,
 
@@ -61,8 +61,8 @@ void guia5_eje1_part1() {
     // En los patrones (patrones/activacion):
     // 1 => B ; 2 => A ; 3 => D ; 4 => C
 
-    unsigned int 
-        width = 512, 
+    unsigned int
+        width = 512,
         height = 512,
 
         line_hor = 64, // posicion y = ?? de la linea horizontal
@@ -92,7 +92,7 @@ void guia5_eje1_part1() {
     // Circulo central que reemplaza al cuadrado y las lineas
     prueba_tres = art_draw_centered(inciso, 'c', cir_pts_x, cir_pts_y);
 
-    // Voy a tener una "+"" copada en el centro, 
+    // Voy a tener una "+"" copada en el centro,
     // luego el efecto de sync en el resto de la img
     // triangulo central: como cuadrado, pero esta mas abajo el "origen"
     (prueba_uno, prueba_dos, prueba_tres).display("Bases [1, 2, 3]");
@@ -118,17 +118,17 @@ void guia5_eje1_part2() {
 
     // Cropeamos ambas un rectangulo de 256x256
     base.crop(
-        base.width() / 2 - 128, base.height() / 2 - 128, 
+        base.width() / 2 - 128, base.height() / 2 - 128,
         base.width() / 2 + 128, base.height() / 2 + 128);
 
     rotada.crop(
-        rotada.width() / 2 - 128, rotada.height() / 2 - 128, 
+        rotada.width() / 2 - 128, rotada.height() / 2 - 128,
         rotada.width() / 2 + 128, rotada.height() / 2 + 128);
 
     (
-        base.get_normalize(0, 255), 
-        magn_tdf(base).get_normalize(0, 255), 
-        rotada.get_normalize(0, 255), 
+        base.get_normalize(0, 255),
+        magn_tdf(base).get_normalize(0, 255),
+        rotada.get_normalize(0, 255),
         magn_tdf(rotada).get_normalize(0, 255)
     ).display("Original cropeada y FFT, Rotada cropeada y FFT");
 
@@ -194,7 +194,7 @@ CImg<double> get_image_from_magn_phse(CImgList<> magnitud_fase) {
 /// EJERCICIO 2 INCISO 1
 void guia5_eje2_part1(const char * filename) {
 
-    CImg<double> 
+    CImg<double>
         base(filename),
         procesada(base),
         magnitud_uno,
@@ -212,9 +212,9 @@ void guia5_eje2_part1(const char * filename) {
     procesada.fill(0);
     fase_cero = get_image_from_magn_phse(magnitud_fase[0], procesada);
 
-    (   
-        base, 
-        magnitud_fase[0].get_log().get_normalize(0, 255), 
+    (
+        base,
+        magnitud_fase[0].get_log().get_normalize(0, 255),
         magnitud_fase[1],
         fase_cero.get_log(),
         magnitud_uno
@@ -226,8 +226,8 @@ void guia5_eje2_part1(const char * filename) {
 /// EJERCICIO 2 INCISO 2
 void guia5_eje2_part2(const char * filename, const char * oth_file) {
 
-    CImg<double> 
-        img1(filename), 
+    CImg<double>
+        img1(filename),
         img2(oth_file);
 
     // Si no son del mismo tamanho, lo hacemos al tamanho de la primera
@@ -235,7 +235,7 @@ void guia5_eje2_part2(const char * filename, const char * oth_file) {
         img2.resize(img1);
     }
 
-    CImgList<> 
+    CImgList<>
         img1_mag_fase(get_magnitude_phase(img1.get_FFT())),
         img2_mag_fase(get_magnitude_phase(img2.get_FFT())),
         imgs_mixed(2);
@@ -265,14 +265,14 @@ void guia5_eje2_part2(const char * filename, const char * oth_file) {
 por que haces todo eso?
 porque se te agrandan las imagenes
 como en señales, tenes que hacer zero padding
-el zero padding aca significa agrandar la imagen y 
+el zero padding aca significa agrandar la imagen y
 agrandar el filtro a la suma de sus tamaños, como en señales
 
 asi te queda despues del zero padding y ANTES de transformar:
-1 1 1 0 0 0 0 
-1 1 1 0 0 0 0 
 1 1 1 0 0 0 0
-0 0 0 0 0 0 0 
+1 1 1 0 0 0 0
+1 1 1 0 0 0 0
+0 0 0 0 0 0 0
 0 0 0 0 0 0 0
 */
 /// Recibe una mascara y multiplica la base en el espectro de frecuencia
@@ -281,25 +281,25 @@ CImg<double> get_image_filtered_from_freq(
     CImg<double> mascara) {
 
     // Pag202 ~ 203
-    unsigned int 
+    unsigned int
         A = base.width(),
         B = base.height(),
         C = mascara.width(),
         D = mascara.height(),
         P = A + C - 1,
-        Q = B + D - 1; 
+        Q = B + D - 1;
 
     // Resizeo con ceros (-100 default spectrum y depth), 0 es para agregar zeros
     base.resize(P, Q, -100, -100, 0, 0);
     mascara.resize(P, Q, -100, -100, 0, 0);
 
     // Ahora si aplico la FFT y multiplico en frecuencia
-    CImgList<> 
+    CImgList<>
         base_FFT(base.get_FFT()),
         mascara_FFT(mascara.get_FFT());
 
     cimg_forXY(base_FFT[0], u, v) {
-        complex<double> 
+        complex<double>
             factor1(base_FFT[0](u, v), base_FFT[1](u, v)),
             factor2(mascara_FFT[0](u, v), mascara_FFT[1](u, v)),
             resultado = factor1 * factor2;
@@ -319,7 +319,7 @@ CImg<double> get_image_filtered_from_freq(
 
 void guia5_eje3(const char * filename, const char * oth_file = "filtros/gaussian_21x21.txt") {
 
-    CImg<double> 
+    CImg<double>
         base(filename),
         // Obtengo mi filtro gaussiano
         gaussian(cimg_ce::get_filter_from_file<double>(oth_file)),
@@ -328,7 +328,7 @@ void guia5_eje3(const char * filename, const char * oth_file = "filtros/gaussian
         filtrado_incorrecto,
         filtrado_correcto;
 
-    CImgList<> 
+    CImgList<>
         fft(base.get_FFT()),
         filtrado_frecuencial(gaussian.get_FFT());
 
@@ -348,7 +348,7 @@ void guia5_eje3(const char * filename, const char * oth_file = "filtros/gaussian
                 u_c = 0;
             }
 
-            complex<double> 
+            complex<double>
                 factor1 = (fft[0](u, v), fft[1](u, v)),
                 factor2 = (filtrado_frecuencial[0](u_c, v_c), filtrado_frecuencial[1](u_c, v_c)),
                 resultado = factor1 * factor2;
@@ -386,7 +386,7 @@ void guia5_eje3(const char * filename, const char * oth_file = "filtros/gaussian
     //... hasta aqui (espacial)
     fin_spat = time(NULL);
 
-    std::cout << "Tiempo transcurrido en mascara aplicadas a:\nEspacial: " 
+    std::cout << "Tiempo transcurrido en mascara aplicadas a:\nEspacial: "
         << difftime(fin_spat, inicio_spat) << " [seg].\nFrecuencia: "
         << difftime(fin_freq, inicio_freq) << " [seg].\n";
 
@@ -408,7 +408,7 @@ CImg<double> get_D_matriz(CImg<double> base, int x = -1, int y = -1) {
     if (x == -1 && y == -1) {
         x = D_matriz.width() / 2;
         y = D_matriz.height() / 2;
-    } 
+    }
 
     cimg_forXY(D_matriz, u, v) {
         D_matriz(u, v) = pow(pow(u - x, 2) + pow(v - y, 2), 0.5);
@@ -462,11 +462,11 @@ CImg<double> get_img_from_filter(CImg<double> base, CImgList<> magnitud_filtro) 
 
     // Multiplico por el filtro
     cimg_forXY(fft[0], u, v) {
-        complex<double> 
+        complex<double>
             part1(fft[0](u, v), fft[1](u, v)),
             part2(magnitud_filtro[0](u, v), magnitud_filtro[1](u, v)),
             resultado = part1 * part2;
-        
+
         fft[0](u, v) = real(resultado);
         fft[1](u, v) = imag(resultado);
     }
@@ -475,8 +475,8 @@ CImg<double> get_img_from_filter(CImg<double> base, CImgList<> magnitud_filtro) 
 
     (
         base,
-        magnitud_filtro[0], 
-        get_magnitude_phase(base.get_FFT())[0].get_log(), 
+        magnitud_filtro[0],
+        get_magnitude_phase(base.get_FFT())[0].get_log(),
         get_magnitude_phase(resultado.get_FFT())[0].get_log(),
         resultado
     ).display("Base, PB, magnitud base, magnitud resultado, Base con PB", 0);
@@ -486,7 +486,7 @@ CImg<double> get_img_from_filter(CImg<double> base, CImgList<> magnitud_filtro) 
 
 /// EJERCICIO 4 inciso 1-2
 void guia5_eje4_part1(
-    const char * filename, 
+    const char * filename,
     const unsigned int option_extra = 10.0,
     const unsigned int option_extra_2 = 2) {
 
@@ -501,10 +501,10 @@ void guia5_eje4_part1(
 
 /// Genera el filtro H(u, v) para filtrado homomorfico
 CImgList<> get_H_homomorphic(
-    CImg<double> base, 
-    unsigned int cutoff_frecuency, 
-    double gamma_l = 0.5, 
-    double gamma_h = 2.0, 
+    CImg<double> base,
+    unsigned int cutoff_frecuency,
+    double gamma_l = 0.5,
+    double gamma_h = 2.0,
     double c = 1.0) {
 
     CImg<double> H(base.width(), base.height()),
@@ -527,7 +527,7 @@ CImgList<> get_H_homomorphic(
 CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
 
     // Una imagen f(x, y) = i(x, y) * r(x, y), por lo que aplicamos log para separarlos
-    CImg<double> 
+    CImg<double>
         base_normalizada(base.get_normalize(1, 100)),
         logarithm(cimg_ce::get_log(base_normalizada)),
         filtrado;
@@ -551,7 +551,7 @@ CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
 
 /// EJERCICIO 6
 void guia5_eje6(
-    const char * filename, 
+    const char * filename,
     const unsigned int option_extra,
     const double option_gl,
     const double option_gh,
@@ -580,10 +580,10 @@ int main (int argc, char* argv[]) {
 
     const char* filename = cimg_option("-i", "../../img/casilla.tif", "Image");
     const char* oth_file = cimg_option("-a", "../../img/huang1.jpg", "Another Image");
-    
+
     const unsigned int option_extra = cimg_option("-o", 150, "Option Extra");
     const unsigned int option_extra_2 = cimg_option("-n", 2, "Option Extra_2");
-    
+
     const double option_homomorf_gl = cimg_option("-l", 0.5, "Gamma_l");
     const double option_homomorf_gh = cimg_option("-h", 2.0, "Gamma_h");
     const double option_homomorf_c = cimg_option("-c", 1.0, "Sharpness Constant");
