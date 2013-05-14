@@ -10,6 +10,9 @@
 #include "PDI_functions.h"
 #include "funciones.h"
 
+#define EPSILON 0.00001
+#define PI 3.14159265359
+
 using namespace cimg_library;
 
 /// EJERCICIO 1, con varianzas de gaussiano, uniforme e impulsivo
@@ -65,8 +68,12 @@ double apply_contraharmonic_mean(CImg<double> ventana, double Q) {
         denominador += pow(ventana(s, t), Q);
     }
 
-    // Evitamos dividir por cero
-    numerador /= (denominador != 0) ? denominador : 1;
+    // Evitamos dividir por cero (definir un epsilon? @fern17 ain't nobody got time fo dat)
+    if (!(abs(denominador) < EPSILON )) {
+        numerador /= denominador;
+    } else {
+        numerador = 0; // o dividir por infinito, que es cero
+    }
 
     return numerador;
 }
@@ -218,7 +225,7 @@ void guia6_eje2(
     std::cout << "ECM ord_alphtr : " << base.MSE(ord_alphtr) << endl;
 
     // Para poder normalizar la salida
-    CImgList<> coleccion((ruidosa, media_geom, media_cohm, ord_median, ord_midpnt, ord_alphtr));
+    CImgList<double> coleccion((ruidosa, media_geom, media_cohm, ord_median, ord_midpnt, ord_alphtr));
     CImgDisplay ventana(coleccion, "Base con ruido impulsivo/gaussiano, geometrica, contra-armonica, mediana, midpoint, alpha-trimmed", 0);
 
     while (!ventana.is_closed() && !ventana.is_keyQ() ) {};
@@ -238,8 +245,24 @@ void guia6_eje2(
     /// Ante la aparicion del impulsivo, se mueren los de no-ordenamiento y el midpoint
 }
 
-// Devuelve un filtro notch, del tamanho de la base (u0 y v0 distancia desde el centro)
-CImgList<> notch_filter(CImg<double> base, double cutoff_freq, int u0, int v0, bool is_passband = false) {
+/// Devuelve un filtro notch rechazabanda (o pasabanda), donde W es el ancho de la banda rechazada.
+CImgList<double> notch_filter(CImg<double> base, double D0, double W, bool is_passband = false) {
+
+    CImg<double> D = cimg_ce::get_D_matriz(base);
+    CImg<double> H(base.width(), base.height());
+
+    cimg_forXY(H, u, v) {
+        H(u, v) = (D(u, v) >= (D0 - W/2.0) && D(u, v) <= (D0 + W/2.0)) ? is_passband : !is_passband;
+    }
+
+    // Y desshifteo porque asi es la vida
+    H.shift(-H.width()/2, -H.height()/2, 0, 0, 2);
+
+    return (H, H.get_fill(0));
+}
+
+/// Devuelve un filtro notch ad hoc, del tamanho de la base (u0 y v0 distancia desde el centro)
+CImgList<double> notch_filter(CImg<double> base, double D0, int u0, int v0, bool is_passband = false) {
 
     CImg<double> D1 = cimg_ce::get_D_matriz(base, -1, -1, -u0, -v0);
     CImg<double> D2 = cimg_ce::get_D_matriz(base, -1, -1, u0, v0);
@@ -247,8 +270,8 @@ CImgList<> notch_filter(CImg<double> base, double cutoff_freq, int u0, int v0, b
     CImg<double> H(base.width(), base.height());
 
     cimg_forXY(H, u, v) {
-        // Si esta dentro del radio D0 (cutoff_freq), es 1, sino 0
-        H(u, v) = ( D1(u, v) <= cutoff_freq || D2(u, v) <= cutoff_freq) ? is_passband : !is_passband;
+        // Si esta dentro del radio D0 (cutoff frequency), es 1, sino 0
+        H(u, v) = ( D1(u, v) <= D0 || D2(u, v) <= D0) ? is_passband : !is_passband;
     }
 
     // Y desshifteo porque asi es la vida
@@ -269,6 +292,7 @@ void guia6_eje4(
     CImg<double> base(filename);
     CImg<double> original(filename_original);
     CImg<double> restaurada;
+    CImg<double> restaurada_adhoc;
     CImg<double> solo_ruido;
 
     (base, magn_tdf(base)).display("Base y Magnitud, para inspeccionar", 0);
@@ -276,33 +300,132 @@ void guia6_eje4(
     int distancia_al_centro_x = x0 - floor(base.width() / 2.0);
     int distancia_al_centro_y = y0 - floor(base.height() / 2.0);
 
+    // Esto es para aplicar un rechazabanda normal, la distancia al foco seria mi frecuencia de corte
+    double distancia_al_foco = pow(pow(distancia_al_centro_x, 2) + pow(distancia_al_centro_y, 2), 0.5);
+
+    // Y mi D0 seria mi "ancho" de la banda a rechazar
+    CImgList<double> nf(notch_filter(base, distancia_al_foco, D0));
+
     // Por analisis, veo que esta el ruido en los puntos (58;38) .. (199; 219) [ptos intermedios esquinas]
-    CImgList<> nf1(notch_filter(base, D0, distancia_al_centro_x, distancia_al_centro_y));
-    CImgList<> nf2(notch_filter(base, D0, distancia_al_centro_x, -distancia_al_centro_y));
+    CImgList<double> nf1(notch_filter(base, D0, distancia_al_centro_x, distancia_al_centro_y));
+    CImgList<double> nf2(notch_filter(base, D0, distancia_al_centro_x, -distancia_al_centro_y));
     
-    CImgList<> nf1p(notch_filter(base, D0, distancia_al_centro_x, distancia_al_centro_y, true));
-    CImgList<> nf2p(notch_filter(base, D0, distancia_al_centro_x, -distancia_al_centro_y, true));
+    CImgList<double> nf1p(notch_filter(base, D0, distancia_al_centro_x, distancia_al_centro_y, true));
+    CImgList<double> nf2p(notch_filter(base, D0, distancia_al_centro_x, -distancia_al_centro_y, true));
 
-    CImgList<> nf12(cimg_ce::fusion_complex_images(nf1, nf2, true));
-    CImgList<> nf12p(cimg_ce::fusion_complex_images(nf1p, nf2p));
+    // Esto es para unir los filtros ad hoc que tengo en uno solo
+    CImgList<double> nf12(cimg_ce::fusion_complex_images(nf1, nf2, true));
+    CImgList<double> nf12p(cimg_ce::fusion_complex_images(nf1p, nf2p));
 
-    // Aplico el filtro notch para eliminar dos de los puntos
-    restaurada = cimg_ce::get_img_from_filter(base, nf12);
+    // Aplico el filtro notch para eliminar los puntos de foco de mi ruido
+    restaurada = cimg_ce::get_img_from_filter(base, nf);
+    restaurada_adhoc = cimg_ce::get_img_from_filter(base, nf12);
     solo_ruido = cimg_ce::get_img_from_filter(base, nf12p);
 
     // Ahora mostramos ambas
     std::cout << "MSE original vs restaurada: " << original.MSE(restaurada) << std::endl;
+    std::cout << "MSE original vs restaurada_adhoc: " << original.MSE(restaurada_adhoc) << std::endl;
 
-    (original, base, restaurada, solo_ruido).display("Original, Degradada, Restaurada y Solo Ruido", 0);
+    (original, restaurada, restaurada_adhoc, solo_ruido)
+        .display("Original, Restaurada, Restaurada Ad Hoc y Solo Ruido (desde ad hoc)", 0);
 
     // Cualitativamente la imagen ha mejorado mucho, pero cuantitativamente (MSE) todavia hay
     // una gran "diferencia" en valores pixel a pixel
+    // La restaurada ad hoc me da un poco menos de MSE, pero hasta ahi no mas (6042 vs 6065)
+}
+
+/// Filtro de degradacion uniforme por movimiento
+CImgList<double> uniform_linear_motion(CImg<double> base, double T, double a, double b) {
+
+    CImgList<double> H(2, base.width(), base.height());
+
+    complex<double> j(0, 1);
+
+    cimg_forXY(H[0], u, v) {
+        double factor = PI * (u * a + v * b);
+
+        complex<double> retorno = 0;
+        
+        // Para que directamente el sin me de 0 y todo el retorno sea 0
+        if (!(abs(sin(factor)) < EPSILON)) {
+            // Tambien debo tener precaucion si es pi/2 o cercano (el sin=1 y exp es =1)
+            if (abs(cos(factor)) < EPSILON) {
+                retorno = T / factor;
+            } else {
+                retorno = T / factor * sin(factor) * exp(-j * factor);
+            }
+        }
+
+        H[0](u, v) = real(retorno);
+        H[1](u, v) = imag(retorno);
+        //std::cout << factor << " # " << real(retorno) << " + j" << imag(retorno);
+        //getchar();
+    }
+
+    // Y desshifteo porque asi es la vida
+    H[0].shift(-H[0].width()/2, -H[0].height()/2, 0, 0, 2);
+    H[1].shift(-H[1].width()/2, -H[1].height()/2, 0, 0, 2);
+
+    return H;
+}
+
+
+/// Filtro de Wiener Generalizado, al que le paso un H
+CImgList<double> wiener_generalized(CImgList<double> H, double alfa, double K) {
+
+    CImgList<double> wiener(2, H[0].width(), H[0].height());
+
+    CImgList<double> magnitud_phase(cimg_ce::get_magnitude_phase(H));
+
+    CImgList<double> H_conjugado(H);
+    
+    // Invierto la componente imaginaria para hacer el conjugado (que en teoria deberia dar 0 si es real)
+    cimg_forXY(H_conjugado[0], u, v) {
+        H_conjugado[1](u, v) = -H_conjugado[1](u, v);
+    }
+
+    CImgList<double> magnitud_phase_conjugado(cimg_ce::get_magnitude_phase(H_conjugado));
+
+    // Ahora voy aplicando la formula 5.8-2
+    cimg_forXY(wiener[0], u, v) {
+
+        complex<double> factor1 = H_conjugado(u, v) / pow(magnitud_phase[0](u, v), 2);
+        complex<double> factor2 = H_conjugado(u, v) / pow(magnitud_phase[0](u, v), 2) + K;
+
+        complex<double> resultado = pow(factor1, alfa) * pow(factor2, 1 - alfa);
+
+        wiener[0](u, v) = real(resultado);
+        wiener[1](u, v) = imag(resultado);
+    }
+
+    // Y desshifteo porque asi es la vida
+    H[0].shift(-H[0].width()/2, -H[0].height()/2, 0, 0, 2);
+    H[1].shift(-H[1].width()/2, -H[1].height()/2, 0, 0, 2);
+
+    return wiener;
+
+}
+
+/// EJERCICIO 5
+void guia6_eje5(
+    const char * filename,
+    const double K,
+    const double a,
+    const double b) {
+
+    CImg<double> base(filename);
+    
+    CImgList<double> H(uniform_linear_motion(base, K, a, b));
+    //CImgList<double> wiener(wiener_generalized(H, 1, 1));
+
+    (base, cimg_ce::get_img_from_filter(base, H)/*, cimg_ce::get_img_from_filter(base, wiener)*/)
+        .display("Derp", 0);
 }
 
 int main (int argc, char* argv[]) {
 
-    const char* filename = cimg_option("-i", "../../img/img_degradada.tif", "Image");
-    const char* filename_original = cimg_option("-o", "../../img/img.tif", "Image");
+    const char* filename = cimg_option("-i", "../../img/huang3_movida.tif", "Image");
+    const char* filename_original = cimg_option("-o", "../../img/huang3.jpg", "Image");
 
     const double opt_1 = cimg_option("-g", 1.0, "Gaussian");
     const double opt_2 = cimg_option("-u", 1.0, "Uniforme");
@@ -314,10 +437,11 @@ int main (int argc, char* argv[]) {
     const unsigned int opt_6 = cimg_option("-c", 10, "CutOff Frequency");
     const unsigned int opt_7 = cimg_option("-x", 199, "Punto x0");
     const unsigned int opt_8 = cimg_option("-y", 219, "Punto y0");
-    
+
     //guia6_eje1(filename, opt_1, opt_2, opt_3);
     //guia6_eje2(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
-    guia6_eje4(filename, filename_original, opt_6, opt_7, opt_8);
+    //guia6_eje4(filename, filename_original, opt_6, opt_7, opt_8);
+    guia6_eje5(filename, opt_1, opt_2, opt_3);
 
     return 0;
 }

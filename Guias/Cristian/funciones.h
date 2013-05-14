@@ -229,9 +229,10 @@ CImg<T> get_D_matriz(CImg<T> base, int x = -1, int y = -1, int x0 = 0, int y0 = 
 
 ///#################################################################################//
 /// Devuelve la magnitud y la fase en dos imagenes de la CImgList del espectro de fourier
-template<typename T> CImgList<> get_magnitude_phase(CImgList<> fourier) {
+template<typename T>
+CImgList<T> get_magnitude_phase(CImgList<T> fourier) {
 
-    CImgList<> retorno(fourier);
+    CImgList<T> retorno(fourier);
 
     cimg_forXY(fourier[0], x, y) {
 
@@ -247,8 +248,9 @@ template<typename T> CImgList<> get_magnitude_phase(CImgList<> fourier) {
 }
 
 /// A partir de la magnitud y fase, obtiene la imagen en componentes complejas
-template<typename T> CImgList<> get_fft_from_magn_phse(CImg<T> magnitud, CImg<T> fase) {
-    CImgList<> real_imag(2, magnitud.width(), magnitud.height());
+template<typename T>
+CImgList<T> get_fft_from_magn_phse(CImg<T> magnitud, CImg<T> fase) {
+    CImgList<T> real_imag(2, magnitud.width(), magnitud.height());
 
     complex<T> j(0, 1);
 
@@ -263,27 +265,30 @@ template<typename T> CImgList<> get_fft_from_magn_phse(CImg<T> magnitud, CImg<T>
 }
 
 /// Version sobrecargado de lo anterior
-CImgList<>  get_fft_from_magn_phse(CImgList<> magnitud_fase) {
+template<typename T>
+CImgList<T> get_fft_from_magn_phse(CImgList<T> magnitud_fase) {
     return get_fft_from_magn_phse(magnitud_fase[0], magnitud_fase[1]);
 }
 
 /// A partir de la imagen de magnitud y fase, las une y retorna la imagen procesada antitransformada
-template<typename T> CImg<T> get_image_from_magn_phse(CImg<T> magnitud, CImg<T> fase) {
+template<typename T>
+CImg<T> get_image_from_magn_phse(CImg<T> magnitud, CImg<T> fase) {
     return get_fft_from_magn_phse(magnitud, fase).get_FFT(true)[0];
 }
 
 /// Version sobrecargado de lo anterior
-template<typename T> CImg<T> get_image_from_magn_phse(CImgList<> magnitud_fase) {
+template<typename T>
+CImg<T> get_image_from_magn_phse(CImgList<T> magnitud_fase) {
     return get_image_from_magn_phse(magnitud_fase[0], magnitud_fase[1]);
 }
 ///#################################################################################//
 
 /// Retorno una convolucion de una imagen con un filtro trabajando en el espectro de frec
-template<typename T> 
-CImg<T> get_img_from_filter(CImg<T> base, CImgList<> filtro) {
+template<typename T>
+CImg<T> get_img_from_filter(CImg<T> base, CImgList<T> filtro) {
 
     // Obtengo la transformada y su magnitud/fase
-    CImgList<> fft = base.get_FFT();
+    CImgList<T> fft = base.get_FFT();
 
     // Multiplico por el filtro
     cimg_forXY(fft[0], u, v) {
@@ -304,18 +309,19 @@ CImg<T> get_img_from_filter(CImg<T> base, CImgList<> filtro) {
         get_magnitude_phase<double>(base.get_FFT())[0].get_log(), 
         get_magnitude_phase<double>(resultado.get_FFT())[0].get_log(),
         resultado
-    ).display("Base, PB, magnitud base, magnitud resultado, Base con PB", 0);
+    ).display("Base, PB, magnitud base, magnitud resultado, Base con PB");
 
     return resultado;
 }
 
 /// Me fusiona dos imagenes complejas (fusiona, NO suma, se queda con el valor mas grande)
 // El ultimo parametro es para preguntar que tiene mas ponderancia (valores altos o bajos)
-CImgList<> fusion_complex_images(CImgList<> f1, CImgList<> f2, bool lower = false) {
+template<typename T> 
+CImgList<T> fusion_complex_images(CImgList<T> f1, CImgList<T> f2, bool lower = false) {
     // Siempre que sean del mismo tamanho
     assert(f1[0].is_sameXYZ(f2[0]));
 
-    CImgList<> retorno(f1);
+    CImgList<T> retorno(f1);
 
     cimg_forXYZ(f1[0], u, v, z) {
         // Nos quedamos con el mas grande de ambos
