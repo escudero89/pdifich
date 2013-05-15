@@ -11,6 +11,7 @@
 #include "funciones.h"
 
 #define EPSILON 0.00001
+#define EVITAR_PIXEL -123.321
 #define PI 3.14159265359
 
 using namespace cimg_library;
@@ -30,16 +31,6 @@ void guia6_eje1(const char * filename, double var_g, double var_u, double var_i)
     b_ga.get_histogram(256, 0, 255).display_graph("Gaussiano", 3);
     b_un.get_histogram(256, 0, 255).display_graph("Uniforme", 3);
     b_im.get_histogram(256, 0, 255).display_graph("Impulsivo", 3);
-
-}
-
-// Obtengo la ventana mxn de una imagen parado en el pixel x,y
-CImg<double> get_ventana(
-    CImg<double> base,
-    unsigned int x,
-    unsigned int y,
-    unsigned int m,
-    unsigned int n) {
 
 }
 
@@ -454,7 +445,127 @@ void guia6_eje5(
 
 
 /// EJERCICIO 6
-void guia6_eje6() {
+// 1) Pag342: Para implementar filtros de ordenamiento en espacio de color 
+// vectoriales es necesario encontrar un esquema de ordenamiento de vectores 
+// que permita que la mediana (u otro filtro de ord) tenga sentido. Algo que 
+// es sencillo en escalares, es complicado al lidear con vectores. El 
+// problema tal va mas alla de nuestra area de expertise (??). Seems legit.
+
+double get_R_from_window_helper(CImg<double> S, CImg<double> &R, unsigned int &i_min, unsigned int &j_min) {
+    // Saco la distancia promedio, y voy a determinar para mi menor aquellos pixeles
+    // que sean menores o iguales a esta distancia
+    double promedio = 0;
+    double R_min = 1/EPSILON;
+
+    // En cada cuadrado de R
+    cimg_forXY(R, x, y) {
+        // Cuando tengo EVITAR_PIXEL, no utilizo ese cuadrante
+        if (S(x, y, 0) != EVITAR_PIXEL) {
+            R(x, y) = 0;
+        
+            // No aplico raiz cuadrada, si total es para comparar
+            cimg_forXYC(S, s, t, c) {
+                // Si S(s, t, c) = EVITAR_PIXEL, no lo contabilizo
+                if (S(s, t, c) != EVITAR_PIXEL) {
+                    R(x, y) += pow(S(s, t, c) - S(x, y, c), 2);
+                }
+            }
+
+            promedio += R(x, y);
+
+            // Voy guardando el indice del elemento de menor valor
+            if (R(x, y) < R_min) {
+                i_min = x;
+                j_min = y;
+                R_min = R(x, y);
+            }
+
+        } else {
+            R(x, y) = EVITAR_PIXEL;
+        }
+    }
+
+    return promedio /= (R.width() * R.height());
+}
+
+/// A partir de una ventana, me construye la distancia acumulada en ella usando distancia euclideana
+// Para evitar que los pixeles impulsivos me muevan el "pixel central elegido", elimino los que 
+// esten a mayor distancia
+CImg<double> get_R_from_window(CImg<double> S, unsigned int &i_min, unsigned int &j_min) {
+
+    CImg<double> R(S.width(), S.height());
+
+    double promedio;
+
+    // Obtengo R y S
+    promedio = get_R_from_window_helper(S, R, i_min, j_min);
+
+    // Recorro otra vez, pero esta vez buscando el minimo y salteando el resto
+    cimg_forXY(R, x, y) {
+        if (R(x, y) > promedio) {
+            cimg_forC(S, c) {
+                S(x, y, c) = EVITAR_PIXEL;
+            }
+        }
+    }
+
+    // Vuelvo a llamar a la funcion para obtener una nueva ventana
+    get_R_from_window_helper(S, R, i_min, j_min);
+
+    return R;
+
+}
+
+/// Aplica un filtro basado en un ordenamiento usando distancias acumuladas
+// Trabaja con una vencidad S de mxn
+CImg<double> apply_filter_R(CImg<double> base, unsigned int m = 3, unsigned int n = 3) {
+  
+    CImg<double> R;
+    CImg<double> S;
+
+    // Para determinar el tamanho de las ventanas
+    int step_x = m / 2;
+    int step_y = n / 2;
+    
+    // Recorro la base y voy tomando ventanas
+    cimg_forXY(base, x, y) {
+
+        // Esto es para evitar que se me vaya del rango
+        int x0 = (x - step_x < 0) ? 0 : x - step_x;
+        int y0 = (y - step_y < 0) ? 0 : y - step_y;
+        int x1 = (x + step_x >= base.width()) ? base.width() - 1 : x + step_x;
+        int y1 = (y + step_y >= base.height()) ? base.height() - 1 : y + step_y;
+
+        // Obtengo la ventana S (con todos sus espectros)
+        S = base.get_crop(x0, y0, x1, y1);
+
+        // Obtengo la ventana R de distancias acumuladas
+        unsigned int i_min = 0;
+        unsigned int j_min = 0;
+
+        R = get_R_from_window(S, i_min, j_min);
+
+        // Le asigno el menor valor a f(x, y)
+        cimg_forC(base, c) {
+            base(x, y, c) = S(i_min, j_min, c);
+        }
+
+    }
+
+    return base;
+
+}
+
+void guia6_eje6(const char * filename, double var_impulsive = 10) {
+
+    CImg<double> base(filename);
+    CImg<double> impulsiva(base.get_noise(var_impulsive, 2));
+
+    (base, apply_filter_R(base)).display("Base, y con filtro R", 0);
+    (impulsiva, apply_filter_R(impulsiva)).display("Impulsiva, y con filtro R", 0);
+
+    // La imagen me quedo re copadaaa bolo.
+    // Otras medidas de distancia? ain't nobody got time fo dat.
 
 }
 
@@ -477,8 +588,8 @@ int main (int argc, char* argv[]) {
     //guia6_eje1(filename, opt_1, opt_2, opt_3);
     //guia6_eje2(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
     //guia6_eje4(filename, filename_original, opt_6, opt_7, opt_8);
-    guia6_eje5(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
-    //guia6_eje6
+    //guia6_eje5(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
+    guia6_eje6(filename);
 
     return 0;
 }
