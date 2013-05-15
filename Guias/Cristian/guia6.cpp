@@ -346,26 +346,33 @@ CImgList<double> uniform_linear_motion(CImg<double> base, double T, double a, do
 
         complex<double> retorno = 0;
         
-        // Para que directamente el sin me de 0 y todo el retorno sea 0
-        if (!(abs(sin(factor)) < EPSILON)) {
-            // Tambien debo tener precaucion si es pi/2 o cercano (el sin=1 y exp es =1)
-            if (abs(cos(factor)) < EPSILON) {
-                retorno = T / factor;
-            } else {
-                retorno = T / factor * sin(factor) * exp(-j * factor);
-            }
+        /// se puede reescribir la formula: T/factor*sin(factor)*cos(factor) - j*T/factor*sin^2(factor)
+        // Si el factor es 0, sin(factor)/factor = 1, y cos(0) = 1
+        if (fabs(factor) < EPSILON) {
+            retorno = T;
+        
+        // Si el factor es n * pi, con n entero, el resultado es 0
+        } else if (fabs(sin(factor)) < EPSILON) {
+            retorno = 0;
+        
+        // Si el factor es n * pi/2, el resultado es solo imaginario
+        } else if (fabs(cos(factor)) < EPSILON) {
+            retorno = -j * T / factor;
+
+        // Si no se da nada como lo enunciado, el resultado es el normal
+        } else {
+            retorno = T / factor * sin(factor) * exp(-j * factor);
         }
 
         H[0](u, v) = real(retorno);
         H[1](u, v) = imag(retorno);
-        //std::cout << factor << " # " << real(retorno) << " + j" << imag(retorno);
+//        std::cout << factor << " # " << real(retorno) << " + j" << imag(retorno);
         //getchar();
     }
 
     // Y desshifteo porque asi es la vida
-    H[0].shift(-H[0].width()/2, -H[0].height()/2, 0, 0, 2);
-    H[1].shift(-H[1].width()/2, -H[1].height()/2, 0, 0, 2);
-
+    //H[0].shift(-H[0].width()/2, -H[0].height()/2, 0, 0, 2);
+    //H[1].shift(-H[1].width()/2, -H[1].height()/2, 0, 0, 2);
     return H;
 }
 
@@ -386,16 +393,34 @@ CImgList<double> wiener_generalized(CImgList<double> H, double alfa, double K) {
 
     CImgList<double> magnitud_phase_conjugado(cimg_ce::get_magnitude_phase(H_conjugado));
 
+    complex<double> j(0, 1);
+
     // Ahora voy aplicando la formula 5.8-2
-    cimg_forXY(wiener[0], u, v) {
+    cimg_forXY(H[0], u, v) {
 
-        complex<double> factor1 = H_conjugado(u, v) / pow(magnitud_phase[0](u, v), 2);
-        complex<double> factor2 = H_conjugado(u, v) / pow(magnitud_phase[0](u, v), 2) + K;
+        double H_magnitud = magnitud_phase[0](u, v);
+        complex<double> H_conj = H_conjugado[0](u, v) + j * H_conjugado[1](u, v);
+        complex<double> factor1 = 1;
+        complex<double> factor2 = 1;
+        complex<double> resultado = 0;
 
-        complex<double> resultado = pow(factor1, alfa) * pow(factor2, 1 - alfa);
+        // Para evitar divisiones por cero
+        if (fabs(H_magnitud) > EPSILON) {
+            factor1 = H_conj / pow(H_magnitud, 2);
+        }
+
+        if (fabs(pow(H_magnitud, 2) + K) > EPSILON) {
+            factor2 = H_conj / (pow(H_magnitud, 2) + K);
+        }
+
+        if (fabs(real(factor1) + imag(factor1)) > EPSILON &&
+            fabs(real(factor2) + imag(factor2)) > EPSILON) {
+            resultado = pow(factor1, alfa) * pow(factor2, 1 - alfa);
+        }
 
         wiener[0](u, v) = real(resultado);
         wiener[1](u, v) = imag(resultado);
+
     }
 
     // Y desshifteo porque asi es la vida
@@ -411,15 +436,26 @@ void guia6_eje5(
     const char * filename,
     const double K,
     const double a,
-    const double b) {
+    const double b,
+    const double alfa,
+    const double K_wiener) {
 
     CImg<double> base(filename);
     
     CImgList<double> H(uniform_linear_motion(base, K, a, b));
-    //CImgList<double> wiener(wiener_generalized(H, 1, 1));
+    CImgList<double> wiener(wiener_generalized(H, alfa, K_wiener));
 
-    (base, cimg_ce::get_img_from_filter(base, H)/*, cimg_ce::get_img_from_filter(base, wiener)*/)
+    CImg<double> desplazada(cimg_ce::get_img_from_filter(base, H));
+    CImg<double> reenfocada(cimg_ce::get_img_from_filter(desplazada, wiener));
+
+    (base, desplazada, reenfocada)
         .display("Derp", 0);
+}
+
+
+/// EJERCICIO 6
+void guia6_eje6() {
+
 }
 
 int main (int argc, char* argv[]) {
@@ -441,7 +477,8 @@ int main (int argc, char* argv[]) {
     //guia6_eje1(filename, opt_1, opt_2, opt_3);
     //guia6_eje2(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
     //guia6_eje4(filename, filename_original, opt_6, opt_7, opt_8);
-    guia6_eje5(filename, opt_1, opt_2, opt_3);
+    guia6_eje5(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
+    //guia6_eje6
 
     return 0;
 }
