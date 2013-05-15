@@ -146,12 +146,17 @@ CImgList<double> decouplingLR(
 CImg<double> ratioDayNightBG(CImg<double> daytime, CImg<double> nighttime,
                              int option_fc, double option_gl, double option_gh, double option_c){
 
-    CImgList<double> LRday(decouplingLR(daytime, option_fc, option_gl, option_gh, option_c));
-    CImgList<double> LRnight(decouplingLR(nighttime, option_fc, option_gl, option_gh, option_c));
+    CImgList<unsigned char> LRday(decouplingLR(daytime, option_fc, option_gl, option_gh, option_c));
+    CImgList<unsigned char> LRnight(decouplingLR(nighttime, option_fc, option_gl, option_gh, option_c));
     CImg<double> ratio(daytime.width(), daytime.height());
-
+    
     cimg_forXY(daytime, x, y){
-        ratio(x,y) = LRday[0](x,y) / LRnight[0](x,y);
+        // El problema esta en que puede dividir por cero. Cuando eso pase, le asignamos 255 (max valor) al ratio
+        if (LRnight[0](x,y) == 0) {
+            ratio(x,y) = 0;
+        } else {
+            ratio(x,y) = 1.0 * LRday[0](x,y) / LRnight[0](x,y);
+        }
     }
 
     return ratio;
@@ -195,7 +200,7 @@ void nighttimeEnhacement(   const char* day_file,
     /// Abrimos y trabajamos imagen por imagen
     ifstream f(images_file);
     string image_file;
-
+    
     // Si no pudo abrirlo, problema vieja
     assert(f.is_open());
 
@@ -211,9 +216,9 @@ void nighttimeEnhacement(   const char* day_file,
         CImg<double> intensidad(denighting(image.get_channel(2), ratio, option_fc, option_gl, option_gh, option_c ));
 
         intensidad.normalize(0, 1);
-        (image.get_channel(0), image.get_channel(1), image.get_channel(2), intensidad).display();
+        //(image.get_channel(0), image.get_channel(1), image.get_channel(2), intensidad).display();
         image = join_channels(image.get_channel(0), image.get_channel(1), intensidad);
-        (image.get_channel(0), image.get_channel(1), image.get_channel(2)).display();
+        //(image.get_channel(0), image.get_channel(1), image.get_channel(2)).display();
         image.HSItoRGB();
         image.save("img_out/resultado.png", contador);
 
@@ -237,22 +242,5 @@ int main(int argc, char *argv[]){
 
     nighttimeEnhacement(day_filename, night_filename, images_filename, fc, gl, gh, c);
 
- /*
-    CImg<double> corregida(correccionPsi(base, psi));
-    CImg<double> couplingImage(corregida);
-    CImgList<double> LR(decouplingLR(corregida.get_channel(2), fc, gl, gh, c));
-
-    cimg_forXY(LR[0], x, y){
-        couplingImage(x,y,2) = LR[0](x,y) * LR[1](x,y);
-    }
-    couplingImage.get_shared_channel(2).normalize(0, 1);
-
-    (couplingImage.get_channel(2),corregida.get_channel(2))
-        .display();
-
-    (base.get_HSItoRGB(),
-     corregida.get_HSItoRGB(),
-     LR, couplingImage.get_HSItoRGB()).display();
-*/
     return 0;
 }
