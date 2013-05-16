@@ -9,6 +9,8 @@
 #include <cmath>
 #include <cassert>
 
+#define EPSILON 0.001
+
 using namespace cimg_library;
 using namespace std;
 
@@ -146,19 +148,19 @@ CImgList<double> decouplingLR(
 CImg<double> ratioDayNightBG(CImg<double> daytime, CImg<double> nighttime,
                              int option_fc, double option_gl, double option_gh, double option_c){
 
-    CImgList<unsigned char> LRday(decouplingLR(daytime, option_fc, option_gl, option_gh, option_c));
-    CImgList<unsigned char> LRnight(decouplingLR(nighttime, option_fc, option_gl, option_gh, option_c));
+    CImgList<double> LRday(decouplingLR(daytime, option_fc, option_gl, option_gh, option_c));
+    CImgList<double> LRnight(decouplingLR(nighttime, option_fc, option_gl, option_gh, option_c));
     CImg<double> ratio(daytime.width(), daytime.height());
-    
+
     cimg_forXY(daytime, x, y){
         // El problema esta en que puede dividir por cero. Cuando eso pase, le asignamos 255 (max valor) al ratio
-        if (LRnight[0](x,y) == 0) {
-            ratio(x,y) = 0;
+        if (LRnight[0](x,y) < EPSILON) {
+            ratio(x,y) = 1.0;
         } else {
-            ratio(x,y) = 1.0 * LRday[0](x,y) / LRnight[0](x,y);
+            ratio(x,y) = LRday[0](x,y) / LRnight[0](x,y);
         }
     }
-
+(ratio).display();
     return ratio;
 }
 
@@ -200,7 +202,7 @@ void nighttimeEnhacement(   const char* day_file,
     /// Abrimos y trabajamos imagen por imagen
     ifstream f(images_file);
     string image_file;
-    
+
     // Si no pudo abrirlo, problema vieja
     assert(f.is_open());
 
