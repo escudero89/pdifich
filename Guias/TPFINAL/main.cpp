@@ -9,7 +9,7 @@
 #include <cmath>
 #include <cassert>
 
-#define EPSILON 0.001
+#define EPSILON 0.1
 
 using namespace cimg_library;
 using namespace std;
@@ -120,8 +120,10 @@ CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
 // Trabajamos la imagen de entrada en el modelo HSI para modificar solo el canal I
 CImg<double> correccionPsi(CImg<double> img, double psi = 3){
 
-    cimg_forXY(img, x, y){
-        img(x, y, 2) = ( 255 * log((img(x, y, 2)/255) * (psi -1) + 1) ) / log(psi);
+    if (psi != 1 && psi > 0) {
+        cimg_forXY(img, x, y){
+            img(x, y, 2) = ( 255 * log((img(x, y, 2)/255) * (psi -1) + 1) ) / log(psi);
+        }
     }
 
     return img;
@@ -152,15 +154,15 @@ CImg<double> ratioDayNightBG(CImg<double> daytime, CImg<double> nighttime,
     CImgList<double> LRnight(decouplingLR(nighttime, option_fc, option_gl, option_gh, option_c));
     CImg<double> ratio(daytime.width(), daytime.height());
 
+    LRday[0].normalize(1,2);
+    LRnight[0].normalize(1,2);
+    (LRday, LRnight).display();
+
     cimg_forXY(daytime, x, y){
-        // El problema esta en que puede dividir por cero. Cuando eso pase, le asignamos 255 (max valor) al ratio
-        if (LRnight[0](x,y) < EPSILON) {
-            ratio(x,y) = 1.0;
-        } else {
-            ratio(x,y) = LRday[0](x,y) / LRnight[0](x,y);
-        }
+        //Obtenemos el ratio
+        ratio(x,y) = LRday[0](x,y) / LRnight[0](x,y);
     }
-(ratio).display();
+
     return ratio;
 }
 
@@ -171,6 +173,13 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 
     CImgList<double> LRbase(decouplingLR(base, option_fc, option_gl, option_gh, option_c));
 
+    CImg<double> f_promediado(7,7,1,1,1);
+    LRbase[0].convolve(f_promediado);
+
+    //Normalizamos entre 1 y 2 para que no moleste la division por cero
+    LRbase[0].normalize(1,2);
+    LRbase[1].normalize(1,2);
+
     cimg_forXY(LRbase[0],x,y){
         //En este paso hacemos el producto entre la reflactancia de la imagen a mejorar
         //y la luminancia obtenida al multiplicar el ratio por la luminancia de la base
@@ -179,18 +188,34 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 
     }
 
+    //Volvemos al rango original entre 0 y 255
+    base.normalize(0,255);
+
     return base;
 }
 
 ///Funcion principal que hace todo
-void nighttimeEnhacement(   const char* day_file,
-                            const char* night_file,
-                            const char* images_file,
+void nighttimeEnhacement(   const char* images_file, double psi,
                             int option_fc, double option_gl,
                             double option_gh, double option_c) {
 
-    CImg<double> daytime_bg(day_file);
-    CImg<double> nighttime_bg(night_file);
+    /// Abrimos y trabajamos imagen por imagen
+    ifstream f(images_file);
+    string image_file;
+
+    // Si no pudo abrirlo, problema vieja
+    assert(f.is_open());
+
+    string day_file;
+    string night_file;
+
+    f >> day_file;
+    f >> night_file;
+
+    CImg<double> daytime_bg(day_file.c_str());
+    CImg<double> nighttime_bg(night_file.c_str());
+
+    nighttime_bg = correccionPsi(nighttime_bg, psi);
 
     daytime_bg.RGBtoHSI();
     nighttime_bg.RGBtoHSI();
@@ -199,12 +224,6 @@ void nighttimeEnhacement(   const char* day_file,
                                        nighttime_bg.get_channel(2),
                                        option_fc, option_gl, option_gh, option_c));
 
-    /// Abrimos y trabajamos imagen por imagen
-    ifstream f(images_file);
-    string image_file;
-
-    // Si no pudo abrirlo, problema vieja
-    assert(f.is_open());
 
     unsigned int contador = 1;
 
@@ -214,15 +233,30 @@ void nighttimeEnhacement(   const char* day_file,
         f >> image_file;
 
         CImg<double> image(image_file.c_str());
+        CImg<double> original(image);
+        // para comparar
+        image.save("temp/r.png", contador);
+
+        image = correccionPsi(image, psi);
+
         image.RGBtoHSI();
-        CImg<double> intensidad(denighting(image.get_channel(2), ratio, option_fc, option_gl, option_gh, option_c ));
+        CImg<double> intensidad(denighting(image.get_channel(2),
+                                           ratio,
+                                           option_fc, option_gl, option_gh, option_c ));
+
+        CImg<double> promediado(11, 11, 1, 1, 1);
+        CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
+        CImg<double> saturation(image.get_channel(1).get_convolve(promediado).get_normalize(0, 1));
 
         intensidad.normalize(0, 1);
-        //(image.get_channel(0), image.get_channel(1), image.get_channel(2), intensidad).display();
-        image = join_channels(image.get_channel(0), image.get_channel(1), intensidad);
-        //(image.get_channel(0), image.get_channel(1), image.get_channel(2)).display();
+        image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
+
         image.save("img_out/resultado.png", contador);
+
+        (original, image).display("MARCOUSOSUCOUSOU", 0);
+        (original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
+        (image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
 
         contador++;
     }
@@ -242,7 +276,7 @@ int main(int argc, char *argv[]){
     const double gh = cimg_option("-gh", 0.0, "Gamma High");
     const double c = cimg_option("-c", 1.0, "Offset");
 
-    nighttimeEnhacement(day_filename, night_filename, images_filename, fc, gl, gh, c);
+    nighttimeEnhacement(images_filename, psi, fc, gl, gh, c);
 
     return 0;
 }
