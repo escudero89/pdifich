@@ -408,5 +408,51 @@ CImg<T> transform_to_grayscale(CImg<T> imagen, bool rgb = false) {
     return imagen;
 }
 
+///#################################################################################//
+
+/// Obtengo un filtro (i: ideal, b: butterworth [requiere orden], g: gaussian [requiere var])
+// El modificador va a ser el orden en el caso del butterworth, y la varianza en el gaussiano
+CImgList<> get_filter(
+    CImg<double> base, 
+    unsigned int cutoff_frecuency, 
+    unsigned char tipo_filtro = 'i', 
+    double modificador = 2) {
+
+    CImg<double> H(base.width(), base.height()),
+        D_matriz(get_D_matriz(base));
+
+    cimg_forXY(H, u, v) {
+
+        double resultante;
+
+        // ideal
+        if (tipo_filtro == 'i') {
+            resultante = (D_matriz(u, v) <= cutoff_frecuency) ? 1 : 0;
+        } else
+        // butterworth
+        if (tipo_filtro == 'b') {
+            double factor = pow(D_matriz(u,v) / cutoff_frecuency, 2 * modificador);
+            resultante = 1 / (1 + factor);
+        } else
+        // gaussian
+        if (tipo_filtro == 'g') {
+            // e^(-D(u,v)^2 / (2 varianza^2))
+            resultante = exp(-pow(D_matriz(u, v), 2) / (2 * pow(modificador, 2)));
+        } else {
+            // Else error
+            std::cout << "No se especifico el tipo de filtro en cimg_ce::get_filter.\n";
+            assert(0);
+        }
+
+        H(u, v) = resultante;
+    }
+
+    // Y desshifteo porque asi es la vida
+    H.shift(-H.width()/2, -H.height()/2, 0, 0, 2);
+
+    // La parte imaginaria siempre es 0
+    return (H, H.get_fill(0));
+}
+
 /// END NAMESPACE
 }
