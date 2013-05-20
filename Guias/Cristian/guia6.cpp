@@ -462,6 +462,16 @@ void guia6_eje5(
 
     (base, desplazada, reenfocada)
         .display("Derp", 0);
+    
+    H = cimg_ce::get_filter(base, 80, 'g', 10);
+    wiener = wiener_generalized(H, alfa, K);
+
+    desplazada = cimg_ce::get_img_from_filter(base, H);
+    reenfocada = cimg_ce::get_img_from_filter(desplazada, wiener);
+
+    (base, desplazada, reenfocada)
+        .display("Derp", 0);
+
 }
 
 
