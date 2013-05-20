@@ -214,6 +214,7 @@ void nighttimeEnhacement(
     string day_file;
     string night_file;
 
+    // Primeras dos filas: daytime_background y nighttime_background
     f >> day_file;
     f >> night_file;
 
@@ -240,7 +241,7 @@ void nighttimeEnhacement(
         CImg<double> image(image_file.c_str());
         CImg<double> original(image);
         // para comparar
-        image.save("temp/r.png", contador);
+        //image.save("temp/r.png", contador);
 
         image = correccionPsi(image, psi);
 
@@ -265,9 +266,9 @@ void nighttimeEnhacement(
 
         image.save("img_out/resultado.png", contador);
 
-        (original, image).display("MARCOUSOSUCOUSOU", 0);
-        (original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
-        (image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
+        //(original, image).display("MARCOUSOSUCOUSOU", 0);
+        //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
+        //(image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
 
         contador++;
     }
