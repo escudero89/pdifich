@@ -332,35 +332,56 @@ CImgList<double> uniform_linear_motion(CImg<double> base, double T, double a, do
 
     complex<double> j(0, 1);
 
-    cimg_forXY(H[0], u, v) {
-        double factor = PI * (u * a + v * b);
+    int u = 0;//-int(H[0].width()/2);
+    int v = 0;//-int(H[0].height()/2);
 
-        complex<double> retorno = 0;
-        
-        /// se puede reescribir la formula: T/factor*sin(factor)*cos(factor) - j*T/factor*sin^2(factor)
-        // Si el factor es 0, sin(factor)/factor = 1, y cos(0) = 1
-        if (fabs(factor) < EPSILON) {
-            retorno = T;
-        
-        // Si el factor es n * pi, con n entero, el resultado es 0
-        } else if (fabs(sin(factor)) < EPSILON) {
-            retorno = 0;
-        
-        // Si el factor es n * pi/2, el resultado es solo imaginario
-        } else if (fabs(cos(factor)) < EPSILON) {
-            retorno = -j * T / factor;
+    for (unsigned int y = 0 ; y < H[0].height() ; y++) {
+        for (unsigned int x = 0 ; x < H[0].width() ; x++) {
 
-        // Si no se da nada como lo enunciado, el resultado es el normal
-        } else {
-            retorno = T / factor * sin(factor) * exp(-j * factor);
-        }
+            double factor = PI * (u * a + v * b);
 
-        H[0](u, v) = real(retorno);
-        H[1](u, v) = imag(retorno);
-//        std::cout << factor << " # " << real(retorno) << " + j" << imag(retorno);
-        //getchar();
+            complex<double> retorno = 0;
+            
+            /// se puede reescribir la formula: T/factor*sin(factor)*cos(factor) - j*T/factor*sin^2(factor)
+            // Si el factor es 0, sin(factor)/factor = 1, y cos(0) = 1
+            if (fabs(factor) < EPSILON) {
+                retorno = T;
+            std::cout << "f1: ";
+    /*
+            // Si el factor es n * pi, con n entero, el resultado es 0
+            } else if (fabs(sin(factor)) < EPSILON) {
+                retorno = 0;
+            std::cout << "f2 ["<< sin(factor)<<"] : ";
+            
+            // Si el factor es n * pi/2, el resultado es solo imaginario
+            } else if (fabs(cos(factor)) < EPSILON) {
+                retorno = -j * T / factor;
+            std::cout << "f3: ";
+    */
+            // Si no se da nada como lo enunciado, el resultado es el normal
+            } else {
+                retorno = T / factor * sin(factor) * exp(-j * factor);
+            std::cout << "f4: ";
+            }
+
+            H[0](x, y) = real(retorno);
+            H[1](x, y) = imag(retorno);
+            std::cout << "["<<x<< ","<<y<< "]";
+            std::cout << "(" << u << ", " << v << ")"<< factor << " # " << real(retorno) << " + j" << imag(retorno) << std::endl;
+            //getchar();
+
+            // Asi no comenzamos en 0,0
+            u++;
+           }
+
+        u = 0;
+        v++;
     }
-
+    H[0] = H[0] + H[0].get_mirror('x').get_mirror('y'); 
+    H[1] = H[1] + H[1].get_mirror('x').get_mirror('y');
+    H[0].normalize(0, 1);
+    H[1].normalize(0, 1);
+    H.display();
     // Y desshifteo porque asi es la vida
     //H[0].shift(-H[0].width()/2, -H[0].height()/2, 0, 0, 2);
     //H[1].shift(-H[1].width()/2, -H[1].height()/2, 0, 0, 2);
@@ -425,16 +446,16 @@ CImgList<double> wiener_generalized(CImgList<double> H, double alfa, double K) {
 /// EJERCICIO 5
 void guia6_eje5(
     const char * filename,
-    const double K,
+    const double T,
     const double a,
     const double b,
     const double alfa,
-    const double K_wiener) {
+    const double K) {
 
     CImg<double> base(filename);
     
-    CImgList<double> H(uniform_linear_motion(base, K, a, b));
-    CImgList<double> wiener(wiener_generalized(H, alfa, K_wiener));
+    CImgList<double> H(uniform_linear_motion(base, T, a, b));
+    CImgList<double> wiener(wiener_generalized(H, alfa, K));
 
     CImg<double> desplazada(cimg_ce::get_img_from_filter(base, H));
     CImg<double> reenfocada(cimg_ce::get_img_from_filter(desplazada, wiener));
@@ -585,11 +606,15 @@ int main (int argc, char* argv[]) {
     const unsigned int opt_7 = cimg_option("-x", 199, "Punto x0");
     const unsigned int opt_8 = cimg_option("-y", 219, "Punto y0");
 
+    const double opt_9 = cimg_option("-T", 1.0, "T");
+    const double opt_10 = cimg_option("-a", 1.0, "T");
+    const double opt_11 = cimg_option("-b", 1.0, "T");
+
     //guia6_eje1(filename, opt_1, opt_2, opt_3);
     //guia6_eje2(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
     //guia6_eje4(filename, filename_original, opt_6, opt_7, opt_8);
-    //guia6_eje5(filename, opt_1, opt_2, opt_3, opt_4, opt_5);
-    guia6_eje6(filename);
+    guia6_eje5(filename, opt_9, opt_10, opt_11, opt_4, opt_5);
+    //guia6_eje6(filename);
 
     return 0;
 }

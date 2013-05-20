@@ -1,7 +1,6 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
-#include <string>
 
 #include "../../CImg-1.5.4/CImg.h"
 
@@ -164,17 +163,48 @@ CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara) {
 	return base;
 }
 
-/// Obtengo un filtro desde un archivo de texto (se lo robe a fer :3)
+/// Obtengo un filtro desde un archivo de texto (se lo robe a fer :3 y la mejore :$)
 template <typename T>
-CImg<T> get_filter_from_file(std::string nombre) {
+CImg<T> get_filter_from_file(const char * nombre) {
 
-    std::ifstream f(nombre.c_str());
+    std::ifstream f(nombre);
 
     // Si no pudo abrirlo, problema vieja
     assert(f.is_open());
 
-    unsigned int filas, columnas;
     T valor;
+    unsigned int counter = 0;
+    unsigned int WIDTH_MAX = 81; // un tamanho base para la longitud de la matriz (9x9)
+
+    // Para ir guardando la matriz
+    CImg<double> matrix(WIDTH_MAX);
+
+    // Mientras vaya avanzando
+    while (!f.eof()) {
+        f >> valor;
+        matrix(counter) = valor;
+        counter++;
+
+        // Si superamos el tamanho, resizeamos al doble y seguimos agregando
+        if (counter > WIDTH_MAX) {
+            WIDTH_MAX *= 2;
+            matrix.resize(WIDTH_MAX, -100, -100, -100, 0); // sin interpolacion
+        }
+    }
+
+    // Una vez termino, considero la matriz de filtro como cuadrada (MxM)
+    unsigned int M = sqrt(counter);
+
+    CImg<double> salida(M, M);
+
+    // Voy cortando trozos y los agrego a la salida
+    for (unsigned int i = 0 ; i < M ; i++) {
+        for (unsigned int j = 0; j < M ; j++) {
+            salida(i, j) = matrix(j + i * M);
+        }
+    }
+/*
+    unsigned int filas, columnas;
 
     // Los dos primeros valores del renglon determinan mi M x N (filas, columnas)
     f >> filas;
@@ -188,9 +218,9 @@ CImg<T> get_filter_from_file(std::string nombre) {
             salida(j, i) = valor;
         }
     }
-
+*/
     f.close();
-    
+    salida.display();
     return salida;
 }
 
@@ -338,6 +368,45 @@ CImgList<T> fusion_complex_images(CImgList<T> f1, CImgList<T> f2, bool lower = f
     return retorno;
 }
 
+/// Transforma una imagen a escala de grises, con depth cantidad de canales (rgb=3, else 1)
+template<typename T>
+CImg<T> transform_to_grayscale(CImg<T> imagen, bool rgb = false) {
+    
+    unsigned int spectrum = imagen.spectrum();
+
+    // Si ya tiene un solo canal, no tiene sentido procesarla
+    if (spectrum > 1) {
+
+        // Si no es rgb, solo trabajo con un canal
+        if (!rgb) {
+            spectrum = 1;
+        }
+
+        // La transformamos en escala de grises
+        cimg_forXY(imagen, x, y) {
+            // Sumo los valores de los canales y lo promedio
+            unsigned int promedio = 0;
+
+            cimg_forC(imagen, c) {
+                promedio += imagen(x, y, c);
+            }
+
+            promedio /= imagen.spectrum();
+
+            for (int v = 0 ; v < spectrum ; v++) {
+                imagen(x, y, v) = promedio;
+            }
+        }
+
+        // Nuevamente, si no es rgb, me quedo con un unico canal
+        if (!rgb) {
+            imagen = imagen.get_channel(0);
+        }
+        
+    }
+
+    return imagen;
+}
 
 /// END NAMESPACE
 }
