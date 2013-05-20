@@ -195,9 +195,14 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 }
 
 ///Funcion principal que hace todo
-void nighttimeEnhacement(   const char* images_file, double psi,
-                            int option_fc, double option_gl,
-                            double option_gh, double option_c) {
+void nighttimeEnhacement(  
+    const char* images_file, 
+    double psi,
+    int option_fc,
+    double option_gl,
+    double option_gh, 
+    double option_c,
+    double pendiente_saturacion) {
 
     /// Abrimos y trabajamos imagen por imagen
     ifstream f(images_file);
@@ -244,9 +249,15 @@ void nighttimeEnhacement(   const char* images_file, double psi,
                                            ratio,
                                            option_fc, option_gl, option_gh, option_c ));
 
-        CImg<double> promediado(11, 11, 1, 1, 1);
+        CImg<double> promediado(13, 13, 1, 1, 1);
         CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
         CImg<double> saturation(image.get_channel(1).get_convolve(promediado).get_normalize(0, 1));
+
+		// Simplemente aplico un filtro lineal en la saturacion
+		cimg_forXY(saturation, x, y) {
+            double val = saturation(x, y) * pendiente_saturacion;
+			saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
+		}
 
         intensidad.normalize(0, 1);
         image = join_channels(hue, saturation, intensidad);
@@ -266,17 +277,18 @@ void nighttimeEnhacement(   const char* images_file, double psi,
 }
 
 int main(int argc, char *argv[]){
-    const char* day_filename = cimg_option("-dayf","img_in/prueba.jpg", "Imagen de entrada");
-    const char* night_filename = cimg_option("-nightf","img_in/prueba.jpg", "Imagen de entrada");
-    const char* images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
-    const double psi = cimg_option("-psi", 3.0, "Factor de correccion psi");
+    const char* _day_filename = cimg_option("-dayf","img_in/prueba.jpg", "Imagen de entrada");
+    const char* _night_filename = cimg_option("-nightf","img_in/prueba.jpg", "Imagen de entrada");
+    const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
+    const double _psi = cimg_option("-psi", 3.0, "Factor de correccion psi");
 
-    const int fc = cimg_option("-fc", 150, "Frecuencia de Corte");
-    const double gl = cimg_option("-gl", 1.0, "Gamma Low");
-    const double gh = cimg_option("-gh", 0.0, "Gamma High");
-    const double c = cimg_option("-c", 1.0, "Offset");
+    const int _fc = cimg_option("-fc", 150, "Frecuencia de Corte");
+    const double _gl = cimg_option("-gl", 1.0, "Gamma Low");
+    const double _gh = cimg_option("-gh", 0.0, "Gamma High");
+    const double _c = cimg_option("-c", 1.0, "Offset");
+    const double _ps = cimg_option("-ps", 1.0, "Pendiente transf. lineal a saturacion");
 
-    nighttimeEnhacement(images_filename, psi, fc, gl, gh, c);
+    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps);
 
     return 0;
 }
