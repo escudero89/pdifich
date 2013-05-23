@@ -1,2 +1,4 @@
 avconv -i Kko5QFiINHM.mp4 %03d.jpg
 
+find carpeta > archivo.txt
+

@@ -135,11 +135,31 @@ CImg<double> correccionPsi(CImg<double> img, double psi = 3){
 CImgList<double> decouplingLR(
     CImg<double> img, int option_fc, double option_gl, double option_gh, double option_c){
 
+#if 0 // Homomorfico
     CImgList<double> f_luminancia(get_H_homomorphic(img, option_fc, option_gl, option_gh, option_c));
     CImgList<double> f_reflactancia(get_H_homomorphic(img, option_fc, option_gh, option_gl, option_c));
 
     CImg<double> luminancia(get_image_homomorphic(img, f_luminancia).get_normalize(0, 255));
     CImg<double> reflactancia(get_image_homomorphic(img, f_reflactancia).get_normalize(0, 255));
+#endif
+
+#if 1 //Bilateral
+    CImg<double> luminancia(img.get_blur_bilateral(option_gl,option_gh,-33,32, true));
+    CImg<double> reflactancia(img.width(), img.height(),1,1);
+
+    luminancia.normalize(1,2);
+    img.normalize(1,2);
+
+    cimg_forXY(reflactancia, i, j){
+        reflactancia(i,j) = img(i,j) / luminancia(i,j);
+    }
+
+    luminancia.normalize(0, 255);
+    reflactancia.normalize(0, 255);
+
+#endif
+
+
 
     return (luminancia, reflactancia);
 
@@ -195,32 +215,43 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 }
 
 ///Funcion principal que hace todo
-void nighttimeEnhacement(  
-    const char* images_file, 
+void nighttimeEnhacement(
+    const char* images_file,
     double psi,
     int option_fc,
     double option_gl,
-    double option_gh, 
+    double option_gh,
     double option_c,
     double pendiente_saturacion) {
 
-    /// Abrimos y trabajamos imagen por imagen
-    ifstream f(images_file);
-    string image_file;
+    string nombreFile = string(images_file).substr(0, string(images_file).find(".txt"));
 
-    // Si no pudo abrirlo, problema vieja
-    assert(f.is_open());
+    string carpetaIn = "CasosPrueba/";
+    string carpetaOut = "Resultados/";
+
+    string carpetaInResultado = carpetaIn + nombreFile + "/";
+    string carpetaOutResultado = carpetaOut + nombreFile + "/";
+cout << carpetaOutResultado << endl;
+    string str_resultado = carpetaOutResultado + "resultado.png";
+
+    /// Abrimos y trabajamos imagen por imagen
+    ifstream f(string(carpetaIn + images_file).c_str());
+    string image_file;
 
     string day_file;
     string night_file;
+
+    // Si no pudo abrirlo, problema vieja
+    assert(f.is_open());
 
     // Primeras dos filas: daytime_background y nighttime_background
     f >> day_file;
     f >> night_file;
 
-    CImg<double> daytime_bg(day_file.c_str());
-    CImg<double> nighttime_bg(night_file.c_str());
+    CImg<double> daytime_bg((carpetaInResultado + day_file).c_str());
+    CImg<double> nighttime_bg((carpetaInResultado + night_file).c_str());
 
+    // Con un 3 esta bueno aparentemente
     nighttime_bg = correccionPsi(nighttime_bg, psi);
 
     daytime_bg.RGBtoHSI();
@@ -238,19 +269,19 @@ void nighttimeEnhacement(
 
         f >> image_file;
 
-        CImg<double> image(image_file.c_str());
+        CImg<double> image((carpetaInResultado + image_file).c_str());
         CImg<double> original(image);
-        // para comparar
-        //image.save("temp/r.png", contador);
 
         image = correccionPsi(image, psi);
 
+        // TRABAJAMOS CON LA IMAGEN
         image.RGBtoHSI();
+
         CImg<double> intensidad(denighting(image.get_channel(2),
                                            ratio,
                                            option_fc, option_gl, option_gh, option_c ));
 
-        CImg<double> promediado(13, 13, 1, 1, 1);
+        CImg<double> promediado(1, 1, 1, 1, 1);
         CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
         CImg<double> saturation(image.get_channel(1).get_convolve(promediado).get_normalize(0, 1));
 
@@ -264,7 +295,7 @@ void nighttimeEnhacement(
         image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
 
-        image.save("img_out/resultado.png", contador);
+        image.save(str_resultado.c_str(), contador);
 
         //(original, image).display("MARCOUSOSUCOUSOU", 0);
         //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
@@ -275,13 +306,29 @@ void nighttimeEnhacement(
 
     f.close();
 
+    /// ACA GUARDO LOS PARAMETROS
+
+    ofstream f_stats(string(carpetaOutResultado + "stats.txt").c_str());
+
+    assert(f_stats.is_open());
+
+    f_stats << "Nombre del archivo base: " << images_file << endl;
+    f_stats << "Psi: " << psi << endl;
+    f_stats << "Frecuencia de corte: " << option_fc << endl;
+    f_stats << "Gl: " << option_gl << endl;
+    f_stats << "Gh: " << option_gh << endl;
+    f_stats << "C: " << option_c << endl;
+    f_stats << "Pendiente saturacion: " << pendiente_saturacion << endl;
+
+    f_stats.close();
+
 }
 
 int main(int argc, char *argv[]){
     const char* _day_filename = cimg_option("-dayf","img_in/prueba.jpg", "Imagen de entrada");
     const char* _night_filename = cimg_option("-nightf","img_in/prueba.jpg", "Imagen de entrada");
     const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
-    const double _psi = cimg_option("-psi", 3.0, "Factor de correccion psi");
+    const double _psi = cimg_option("-psi", -1.0, "Factor de correccion psi");
 
     const int _fc = cimg_option("-fc", 150, "Frecuencia de Corte");
     const double _gl = cimg_option("-gl", 1.0, "Gamma Low");
