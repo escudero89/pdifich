@@ -223,7 +223,8 @@ void nighttimeEnhacement(
     double option_gh,
     double option_c,
     double pendiente_saturacion,
-    unsigned int tamanho_prom_hue) {
+    unsigned int tamanho_prom_hue,
+    double option_fs) {
 
     string nombreFile = string(images_file).substr(0, string(images_file).find(".txt"));
 
@@ -286,18 +287,23 @@ void nighttimeEnhacement(
                                            option_fc, option_gl, option_gh, option_c ));
 
         CImg<double> promediado(tamanho_prom_hue, tamanho_prom_hue, 1, 1, 1);
+
+        CImg<double> intensity_night(image.get_channel(2));
         CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
         CImg<double> saturation(image.get_channel(1));
 
         intensidad.normalize(0, 1);
-        (saturation, intensidad).display();
-		// Simplemente aplico un filtro lineal en la saturacion
+
+		// Hacemos una transformacion lineal sobre la saturacion para disminuirla.
+		// Para hacer la transformacion nos basamos en informacion de intensidad
+		// de la imagen a procesar. Si la intensidad es muy baja, la saturacion tambien
+		// debe serlo. De esta manera atenuamos los falsos colores que se generan
+		// a causa de la poca informacion de color de la imagen de noche.
 		cimg_forXY(saturation, x, y) {
-		    double val = saturation(x, y) * intensidad(x, y);
-            //double val = saturation(x, y) * pendiente_saturacion;
+		    double intensity_n = (intensity_night(x, y) < option_fs) ? intensity_night(x, y) / option_fs : 1;
+		    double val = saturation(x, y) * intensity_n * pendiente_saturacion;
 			saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
 		}
-        (saturation, intensidad).display();
 
         image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
@@ -337,6 +343,8 @@ int main(int argc, char *argv[]){
     const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
     const double _psi = cimg_option("-psi", -1.0, "Factor de correccion psi");
 
+    const int _fs = cimg_option("-fs", 0.03, "Factor de Saturacion en la pendiente");
+
     const int _fc = cimg_option("-fc", 150, "Frecuencia de Corte");
     const double _gl = cimg_option("-gl", 1.0, "Gamma Low");
     const double _gh = cimg_option("-gh", 0.0, "Gamma High");
@@ -345,7 +353,7 @@ int main(int argc, char *argv[]){
 
     const unsigned int _tam_hue = cimg_option("-tph", 15, "Tamanho de matriz Promedio en Hue");
 
-    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue);
+    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue, _fs);
 
     return 0;
 }

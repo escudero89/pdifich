@@ -1,7 +1,7 @@
 Nombre del archivo base: field.txt
 Psi: -1
 Frecuencia de corte: 150
-Gl: 0.1
-Gh: 18
-C: 1
+Gl: 1
+Gh: 1
+C: 0.03
 Pendiente saturacion: 0.5
