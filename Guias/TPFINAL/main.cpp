@@ -176,7 +176,7 @@ CImg<double> ratioDayNightBG(CImg<double> daytime, CImg<double> nighttime,
 
     LRday[0].normalize(1,2);
     LRnight[0].normalize(1,2);
-    (LRday, LRnight).display();
+    (LRday, LRnight).display("LRday, LRnight", 0);
 
     cimg_forXY(daytime, x, y){
         //Obtenemos el ratio
@@ -222,7 +222,8 @@ void nighttimeEnhacement(
     double option_gl,
     double option_gh,
     double option_c,
-    double pendiente_saturacion) {
+    double pendiente_saturacion,
+    unsigned int tamanho_prom_hue) {
 
     string nombreFile = string(images_file).substr(0, string(images_file).find(".txt"));
 
@@ -231,7 +232,10 @@ void nighttimeEnhacement(
 
     string carpetaInResultado = carpetaIn + nombreFile + "/";
     string carpetaOutResultado = carpetaOut + nombreFile + "/";
-cout << carpetaOutResultado << endl;
+
+    cout << "Tomando casos de prueba desde: " << carpetaInResultado << endl;
+    cout << "Retornando resultados en: " << carpetaOutResultado << endl;
+
     string str_resultado = carpetaOutResultado + "resultado.png";
 
     /// Abrimos y trabajamos imagen por imagen
@@ -281,17 +285,20 @@ cout << carpetaOutResultado << endl;
                                            ratio,
                                            option_fc, option_gl, option_gh, option_c ));
 
-        CImg<double> promediado(1, 1, 1, 1, 1);
+        CImg<double> promediado(tamanho_prom_hue, tamanho_prom_hue, 1, 1, 1);
         CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
-        CImg<double> saturation(image.get_channel(1).get_convolve(promediado).get_normalize(0, 1));
-
-		// Simplemente aplico un filtro lineal en la saturacion
-		cimg_forXY(saturation, x, y) {
-            double val = saturation(x, y) * pendiente_saturacion;
-			saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
-		}
+        CImg<double> saturation(image.get_channel(1));
 
         intensidad.normalize(0, 1);
+        (saturation, intensidad).display();
+		// Simplemente aplico un filtro lineal en la saturacion
+		cimg_forXY(saturation, x, y) {
+		    double val = saturation(x, y) * intensidad(x, y);
+            //double val = saturation(x, y) * pendiente_saturacion;
+			saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
+		}
+        (saturation, intensidad).display();
+
         image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
 
@@ -336,7 +343,9 @@ int main(int argc, char *argv[]){
     const double _c = cimg_option("-c", 1.0, "Offset");
     const double _ps = cimg_option("-ps", 1.0, "Pendiente transf. lineal a saturacion");
 
-    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps);
+    const unsigned int _tam_hue = cimg_option("-tph", 15, "Tamanho de matriz Promedio en Hue");
+
+    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue);
 
     return 0;
 }
