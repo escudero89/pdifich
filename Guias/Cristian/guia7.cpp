@@ -176,6 +176,31 @@ void guia7_eje2(
     (base, hough(get_maxs_from_hough(Hough, max_picos), true) + base / 2).display("Eje2", 0);
 }
 
+/// Ejercicio 3
+void guia7_eje3(const char * filename, int delta, int etiqueta) {
+
+    CImg<unsigned char> base(filename);
+    CImg<unsigned char> region_crecida;
+
+    CImgDisplay ventana(base, "Elige un punto para comenzar");
+
+    while (!ventana.is_closed() && !ventana.is_keyQ()) { 
+
+        // Hora de capturar clicks!
+        // Wait for any user event occuring on the current display
+        ventana.wait();
+        
+        short y = ventana.mouse_y();
+        short x = ventana.mouse_x();
+
+        if (ventana.button() && ventana.mouse_y()>=0) {
+            region_crecida = region_growing(base, x, y, delta, etiqueta);
+            (base, region_crecida, base - region_crecida).display("Base, Region crecida, Seleccion", 0);
+        }
+    }
+
+}
+
 int main (int argc, char* argv[]) {
 
     const char* _filename = cimg_option("-i", "../../img/estanbul.tif", "Imagen");
@@ -193,8 +218,12 @@ int main (int argc, char* argv[]) {
 
     const unsigned int _ints = cimg_option("-ints", 25, "Valor unsigned int multipleuso");
 
+    const int _delta = cimg_option("-delta", 1, "Define el rango de pertenencia");
+    const int _etiqueta = cimg_option("-etiqueta", 256, "nro de la etiqueta, no debe pertenecer al rango");
+
     //guia7_eje1(_filename, _file_gx, _file_gy, _umbral, _gaussian_var);
-    guia7_eje2(_filename, _ang, _rho, _rho_tol, _ang_tol, _umbral, _ints);
+    //guia7_eje2(_filename, _ang, _rho, _rho_tol, _ang_tol, _umbral, _ints);
+    guia7_eje3(_filename, _delta, _etiqueta);
 
     return 0;
 }
