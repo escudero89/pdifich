@@ -277,9 +277,63 @@ void guia7_eje3(
     // pero el resultado diria que es superior el que hace el humano
 }
 
-/// Ejercicio 4
-void guia7_eje4(const char * filename) {
+/// Le paso una imagen y un valor, la idea es retornar el (x, y) del medio de el objeto que 
+// tenga ese valor en la imagen, y la imagen recortada
+CImg<int> slice_object(CImg<int> base, int valor_buscado, int &x_mid, int &y_mid) {
 
+    // Estos me van a encerrar a mi imagen
+    unsigned int x_min = base.width();
+    unsigned int y_min = base.width();
+    unsigned int x_max = 0;
+    unsigned int y_max = 0;
+
+    cimg_forXY(base, x, y) {
+        if (base(x, y) == valor_buscado) {
+            if (x > x_max) {
+                x = x_max;
+            } 
+            if (x < x_min) {
+                x = x_min;
+            }
+
+            if (y > y_max) {
+                y = y_max;
+            } 
+            if (y < y_min) {
+                y = y_min;
+            }
+        }
+    }
+
+    base.crop(x_min, y_min, x_max, y_max);
+
+    x_mid = base.width() / 2;
+    y_mid = base.height() / 2;
+
+    return base;
+}
+
+/// Ejercicio 4
+void guia7_eje4(
+    const char * filename,
+    double centro_R, 
+    double centro_G, 
+    double centro_B, 
+    double radio) {
+
+    CImg<double> base(filename);
+    CImg<bool> mascara = cimg_ce::get_mask_from_RGB(base, centro_R, centro_G, centro_B, radio);
+    CImg<double> enmascaramiento(cimg_ce::apply_mask(base, mascara));
+
+    CImg<double> promediado(10, 10, 1, 1, 1);
+
+    CImg<int> desenfocada(enmascaramiento.get_convolve(promediado).get_threshold(200).get_channel(0));
+
+    int x_mid, y_mid;
+    cout << x_mid << " " << y_mid;
+    slice_object(label_cc(desenfocada), 55, x_mid, y_mid).display();
+
+    (base, mascara, desenfocada, label_cc(desenfocada)).display("Resultados", 0);
 }
 
 int main (int argc, char* argv[]) {
@@ -304,10 +358,15 @@ int main (int argc, char* argv[]) {
     const int _delta = cimg_option("-delta", 1, "Define el rango de pertenencia");
     const int _etiqueta = cimg_option("-etiqueta", 256, "nro de la etiqueta, no debe pertenecer al rango");
 
+    const double _R = cimg_option("-R", 128.0, "Color Rojo");
+    const double _G = cimg_option("-G", 128.0, "Color Verde");
+    const double _B = cimg_option("-B", 128.0, "Color Azul");
+    const double _radio = cimg_option("-radio", 128.0, "Radio o distancia para el enmascarado");
+
     //guia7_eje1(_filename, _file_gx, _file_gy, _umbral, _gaussian_var);
     //guia7_eje2(_filename, _ang, _rho, _rho_tol, _ang_tol, _umbral, _ints);
-    guia7_eje3(_filename, _delta, _etiqueta, _ints);
-    //guia7_eje4(_filename);
+    //guia7_eje3(_filename, _delta, _etiqueta, _ints);
+    guia7_eje4(_filename, _R, _G, _B, _radio); //-R 222 -G 28 -B 65 -radio 100
 
     return 0;
 }

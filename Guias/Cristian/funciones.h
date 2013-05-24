@@ -203,22 +203,7 @@ CImg<T> get_filter_from_file(const char * nombre) {
             salida(i, j) = matrix(j + i * M);
         }
     }
-/*
-    unsigned int filas, columnas;
 
-    // Los dos primeros valores del renglon determinan mi M x N (filas, columnas)
-    f >> filas;
-    f >> columnas;
-
-    CImg<T> salida(columnas, filas);
-
-    for (unsigned int i = 0; i < filas; i++) { 
-        for (unsigned int j = 0; j < columnas; j++) {
-            f >> valor;
-            salida(j, i) = valor;
-        }
-    }
-*/
     f.close();
     salida.display();
     return salida;
@@ -452,6 +437,42 @@ CImgList<> get_filter(
 
     // La parte imaginaria siempre es 0
     return (H, H.get_fill(0));
+}
+
+/// Le pasas una imagen, un centro y un radio de la esfera en el plano R, G, y B. 
+ // Devuelve la mascara (el tipo me dice si es norma2 [s])
+template<typename T>
+CImg<bool> get_mask_from_RGB(
+    CImg<T> base, 
+    T centro_R, 
+    T centro_G, 
+    T centro_B, 
+    T radio, 
+    char tipo = 's') {
+
+    CImg<bool> mascara(base.width(), base.height(), 1, 1, 0);
+
+    // Recorro cada pixel
+    cimg_forXYZ(base, x, y, z) {
+        /// Lo calcula como una esfera
+        if (tipo == 's') {
+            // Saco las distancias de cada pixel por canal (z_r - a_r)
+                T c_r = pow(base(x, y, z, 0) - centro_R, 2.0);
+                T c_g = pow(base(x, y, z, 1) - centro_G, 2.0);
+                T c_b = pow(base(x, y, z, 2) - centro_B, 2.0);
+
+                // Mido la distancia a cada centro (pag 333)
+                T distancia = pow(c_r + c_g + c_b, 0.5);
+
+            // Esto quiere decir que esta dentro de la esfera (la mascara es 1)
+            if (distancia < radio) {
+                mascara(x, y, z) = 1;
+            }
+
+        }
+    }
+
+    return mascara;
 }
 
 /// END NAMESPACE
