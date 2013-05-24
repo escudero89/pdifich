@@ -176,11 +176,79 @@ void guia7_eje2(
     (base, hough(get_maxs_from_hough(Hough, max_picos), true) + base / 2).display("Eje2", 0);
 }
 
+/// Le pasas una base, un punto [x,y], y hace cosas locas
+CImg<unsigned char> get_region_growed(
+    CImg<unsigned char> base,
+    int x,
+    int y,
+    int delta,
+    int etiqueta,
+    CImg<double> &region_crecida,
+    CImg<double> &segmentacion,
+    bool display = false) {
+
+    region_crecida = base - region_growing(base, x, y, delta, etiqueta);
+
+    /// Esto es solamente para ir agregando regiones con color
+    CImg<double> region_coloreada(
+        cimg_ce::join_channels(
+            region_crecida.get_fill(rand()%360), 
+            region_crecida.get_fill(1), 
+            region_crecida.get_normalize(0, 1)));
+    
+    region_coloreada.HSItoRGB();
+
+    segmentacion += region_coloreada;
+    
+    if (display) {
+        (base, region_crecida, segmentacion).display("Base, Region crecida, Seleccion", 0);
+    }
+    
+    base -= region_crecida;
+
+    return base;
+}
+
+/// Para la parte automatica
+CImg<unsigned char> guia7_eje3_autom(CImg<unsigned char> base, int delta, int etiqueta, const int max_segm) {
+
+    CImg<double> b_autom(base);
+    CImg<double> region_crecida;
+    CImg<double> segmentacion(base.width(), base.height(), 1, 3, 0);
+
+    /// Esto hace la segmentacion automatica, busca semillas en un punto != 0
+    int x_rand, y_rand;
+    int segmentaciones = 0;
+
+    while (b_autom.max() > 0 && segmentaciones < max_segm) {
+        x_rand = rand() % b_autom.width();
+        y_rand = rand() % b_autom.height();
+
+        // No elegimos regiones con pixel 0
+        if (b_autom(x_rand, y_rand) != 0) {
+            b_autom = get_region_growed(b_autom, x_rand, y_rand, delta, etiqueta, region_crecida, segmentacion);      
+            segmentaciones++;
+            std::cout << "max [" <<b_autom.max()<<"] ";
+        }
+
+    }
+
+    return segmentacion;
+}
+
 /// Ejercicio 3
-void guia7_eje3(const char * filename, int delta, int etiqueta) {
+void guia7_eje3(
+    const char * filename, 
+    int delta, 
+    int etiqueta, 
+    const int max_segm) { //Cantidad de segmentaciones maximas
 
     CImg<unsigned char> base(filename);
-    CImg<unsigned char> region_crecida;
+    CImg<unsigned char> original(base);
+    CImg<double> region_crecida;
+    CImg<double> segmentacion(base.width(), base.height(), 1, 3, 0);
+
+    (original, guia7_eje3_autom(base, delta, etiqueta, max_segm)).display("Base, Resultado segmentacion automatica");
 
     CImgDisplay ventana(base, "Elige un punto para comenzar");
 
@@ -194,14 +262,29 @@ void guia7_eje3(const char * filename, int delta, int etiqueta) {
         short x = ventana.mouse_x();
 
         if (ventana.button() && ventana.mouse_y()>=0) {
-            region_crecida = region_growing(base, x, y, delta, etiqueta);
-            (base, region_crecida, base - region_crecida).display("Base, Region crecida, Seleccion", 0);
+            base = get_region_growed(base, x, y, delta, etiqueta, region_crecida, segmentacion, 1);
         }
+
+        base.display(ventana);
     }
+
+    (original, segmentacion).display("Original, Resultado de segmentacion manual", 0);
+
+    // La diferencia claramente es que al elegir los puntos el usuario, la segmentacion es mas 
+    // copada, debido a que "sabes" donde hacer click para elegir mejor las regiones,
+    // dentro de zonas de color mas uniforme, que al azar.
+    // La diferencia es que el automatico lo hace mas rapido :3, pero con muchas mas semillas
+    // pero el resultado diria que es superior el que hace el humano
+}
+
+/// Ejercicio 4
+void guia7_eje4(const char * filename) {
 
 }
 
 int main (int argc, char* argv[]) {
+
+    srand(time(0));
 
     const char* _filename = cimg_option("-i", "../../img/estanbul.tif", "Imagen");
     const char* _file_gx = cimg_option("-gx", "filtros/roberts_gx.txt", "Filtro G_x");
@@ -223,7 +306,8 @@ int main (int argc, char* argv[]) {
 
     //guia7_eje1(_filename, _file_gx, _file_gy, _umbral, _gaussian_var);
     //guia7_eje2(_filename, _ang, _rho, _rho_tol, _ang_tol, _umbral, _ints);
-    guia7_eje3(_filename, _delta, _etiqueta);
+    guia7_eje3(_filename, _delta, _etiqueta, _ints);
+    //guia7_eje4(_filename);
 
     return 0;
 }
