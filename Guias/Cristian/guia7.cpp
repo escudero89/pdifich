@@ -283,34 +283,85 @@ CImg<int> slice_object(CImg<int> base, int valor_buscado, int &x_mid, int &y_mid
 
     // Estos me van a encerrar a mi imagen
     unsigned int x_min = base.width();
-    unsigned int y_min = base.width();
+    unsigned int y_min = base.height();
     unsigned int x_max = 0;
     unsigned int y_max = 0;
 
     cimg_forXY(base, x, y) {
         if (base(x, y) == valor_buscado) {
             if (x > x_max) {
-                x = x_max;
+                x_max = x;
             } 
             if (x < x_min) {
-                x = x_min;
+                x_min = x;
             }
 
             if (y > y_max) {
-                y = y_max;
+                y_max = y;
             } 
             if (y < y_min) {
-                y = y_min;
+                y_min = y;
             }
         }
     }
-
     base.crop(x_min, y_min, x_max, y_max);
 
-    x_mid = base.width() / 2;
-    y_mid = base.height() / 2;
+    x_mid = base.width() / 2 + x_min;
+    y_mid = base.height() / 2 + y_min;
 
     return base;
+}
+
+/// Simplemente evita que se vaya de rango
+unsigned int inRange(int value, int max_range) {
+    if (value >= max_range) {
+        value = max_range - 1;
+    } else if (value < 0) {
+        value = 0;
+    }
+
+    return value;
+}
+
+/// Selecciona objetos en base a su color, de mayor a menor, y devuelve la base modificada con circulos
+CImg<double> select_objects_imprint_circles(
+    CImg<double> base,
+    CImg<int> referencia,
+    unsigned int radio_circulo
+    ) {
+
+    double color[] = {15, 15, 255};
+    unsigned int contador_objetos = 1;
+    int x_mid, y_mid;
+
+    while (referencia.max() > 0) {
+
+        CImg<double> recorte(slice_object(referencia, referencia.max(), x_mid, y_mid));
+
+        // Vamos eliminando los valores ya usados
+        int maximus = referencia.max();
+        unsigned int min_x_searched = inRange(x_mid - int(recorte.width()), base.width());
+        unsigned int max_x_searched = inRange(x_mid + int(recorte.width()), base.width());
+        unsigned int min_y_searched = inRange(y_mid - int(recorte.height()), base.height());
+        unsigned int max_y_searched = inRange(y_mid + int(recorte.height()), base.height());
+
+        for (unsigned int x = min_x_searched ; x < max_x_searched ; x++) {
+            for (unsigned int y = min_y_searched ; y < max_y_searched ; y++) {
+                if (referencia(x, y) == maximus) {
+                    referencia(x, y) = 0;
+                }
+            }
+        }
+
+        cout << "Objeto [" << contador_objetos << "], posicion (" << x_mid << ", " << y_mid << ")\n";
+
+        contador_objetos++;
+        
+        // Dibujamos un circulo en su lugar
+        base.draw_circle(x_mid, y_mid, radio_circulo, color, .8, 3);
+    }
+
+    return base;    
 }
 
 /// Ejercicio 4
@@ -328,12 +379,11 @@ void guia7_eje4(
     CImg<double> promediado(10, 10, 1, 1, 1);
 
     CImg<int> desenfocada(enmascaramiento.get_convolve(promediado).get_threshold(200).get_channel(0));
+    CImg<int> referencia(label_cc(desenfocada));
 
-    int x_mid, y_mid;
-    cout << x_mid << " " << y_mid;
-    slice_object(label_cc(desenfocada), 55, x_mid, y_mid).display();
+    CImg<int> final(select_objects_imprint_circles(base, referencia, 20));
 
-    (base, mascara, desenfocada, label_cc(desenfocada)).display("Resultados", 0);
+    (base, mascara, referencia, final).display("Resultados", 0);
 }
 
 int main (int argc, char* argv[]) {
