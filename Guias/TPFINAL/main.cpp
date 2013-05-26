@@ -214,6 +214,52 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
     return base;
 }
 
+///FUNCION SEGMENTAR:
+///     INPUT:
+///         img1: Imagen de entrada 1 (canal de INTENSIDAD)
+///         img2: Imagen de entrada 2 (canal de INTENSIDAD)
+///         tam_suavizado: tamanio de mascara utilizado para suavizar la diferencia de imagenes
+///         umbral_segmentacion: umbral que define que parte pasa y que parte no en la segmentacion
+
+///     OUTPUT:
+///         Mascara booleana con la imagen segmentada
+CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
+                      unsigned int tam_suavizado = 15,
+                      double umbral_segmentacion=0.15){
+
+    //Creamos una imagen con el valor absoluto de la diferencia de
+    //las dos imagenes de entrada.
+        CImg<double> diferencia(abs(img1 - img2));
+
+    //Suavizamos la imagen para quitar imperfecciones y dejar los valores
+    //de la resta mas uniformes
+        CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 1, 1);
+        diferencia.convolve(filtro_suavizado).normalize(0,1);
+
+    //Aplicamos umbralizacion
+        CImg<bool> mascara(img1.width(), img1.height(), 1, 1);
+        cimg_forXY(mascara, x, y){
+             //(media - desvio * umbral_segmentacion)
+            mascara(x,y) = (diferencia(x,y) > umbral_segmentacion) ? 1 : 0;
+        }
+
+//      SEGUNDO SUAVIZADO, OPCIONAL
+//        (mascara, mascara.convolve(filtro_suavizado)
+//                               .normalize(0,1))
+//                               .display("Diferencia | Diferencia suavizada");
+//        desvio = sqrt(diferencia.variance_mean(0, media));
+//        cimg_forXY(mascara, x, y){
+//             //(media - desvio * umbral_segmentacion)
+//            mascara(x,y) = (mascara(x,y) > media + desvio * umbral_segmentacion) ? true : false;
+//        }
+//
+//        (diferencia, mascara).display();
+
+        return mascara;
+
+    }
+
+
 ///Funcion principal que hace todo
 void nighttimeEnhacement(
     const char* images_file,
