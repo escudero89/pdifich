@@ -2,3 +2,9 @@ avconv -i Kko5QFiINHM.mp4 %03d.jpg
 
 find carpeta > archivo.txt
 
+let x=1; for i in $(ls *.jpg); do mv $i `printf "%05d" $x`.jpg; let x=x+1; done
+
+avconv -f image2 -i %05d.jpg output.mp4
+
+ffmpeg -i night.mp4 -vf "[in] pad=2*iw:ih [left]; movie=denight.mp4 [right]; [left][right] overlay=main_w/2:0 [out]" -b:v 3000k output.mp4
+
