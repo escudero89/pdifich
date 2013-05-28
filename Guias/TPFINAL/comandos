@@ -1,10 +1,20 @@
+Video a imágenes:
 avconv -i Kko5QFiINHM.mp4 %03d.jpg
+
+Quitar audio de video:
+avconv -i infile.avi -an -c:v copy outfile.avi
+
+Cortar video:
+ffmpeg -sameq -ss [inicio_en_formato_hh:mm:ss] -t [duracion_segundos] -i [archivo_original] [archivo_salida]
 
 find carpeta > archivo.txt
 
+Listar y renombrar videos:
 let x=1; for i in $(ls *.jpg); do mv $i `printf "%05d" $x`.jpg; let x=x+1; done
 
+Transformar imágenes a video:
 avconv -f image2 -i %05d.jpg output.mp4
 
+Pegar un video al lado del otro:
 ffmpeg -i night.mp4 -vf "[in] pad=2*iw:ih [left]; movie=denight.mp4 [right]; [left][right] overlay=main_w/2:0 [out]" -b:v 3000k output.mp4
 
