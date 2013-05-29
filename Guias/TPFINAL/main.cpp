@@ -117,7 +117,7 @@ CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
 
 
 /// Aplicamos la correccion Psi para expandir oscuros y contraer claros (mejora contraste)
-// Trabajamos la imagen de entrada en el modelo HSI para modificar solo el canal I
+// Recibe imagen HSI
 CImg<double> correccionPsi(CImg<double> img, double psi = 3){
 
     if (psi != 1 && psi > 0) {
@@ -303,11 +303,13 @@ void nighttimeEnhacement(
     CImg<double> daytime_bg((carpetaInResultado + day_file).c_str());
     CImg<double> nighttime_bg((carpetaInResultado + night_file).c_str());
 
-    // Con un 3 esta bueno aparentemente
-    nighttime_bg = correccionPsi(nighttime_bg, psi);
+
 
     daytime_bg.RGBtoHSI();
     nighttime_bg.RGBtoHSI();
+
+    // Con un 3 esta bueno aparentemente
+    nighttime_bg = correccionPsi(nighttime_bg, psi);
 
     CImg<double> ratio(ratioDayNightBG(daytime_bg.get_channel(2),
                                        nighttime_bg.get_channel(2),
@@ -326,14 +328,17 @@ void nighttimeEnhacement(
         CImg<double> image((carpetaInResultado + image_file).c_str());
         CImg<double> original(image);
 
-        image = correccionPsi(image, psi);
+
 
         // TRABAJAMOS CON LA IMAGEN
         image.RGBtoHSI();
+        image = correccionPsi(image, psi);
 
         CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
         CImg<double> saturation(image.get_channel(1));
         CImg<double> intensity_night(image.get_channel(2));
+
+
 
         CImg<double> intensidad(denighting(intensity_night,
                                            ratio,
