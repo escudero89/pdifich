@@ -333,7 +333,7 @@ void nighttimeEnhacement(
         image.RGBtoHSI();
         image = correccionPsi(image, psi);
 
-        CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
+        CImg<double> hue(image.get_channel(0)/*.get_convolve(promediado).get_normalize(0, 359)*/);
         CImg<double> saturation(image.get_channel(1) /*image.get_channel(1)*/);
         CImg<double> intensity_night(image.get_channel(2));
 
