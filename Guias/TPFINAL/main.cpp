@@ -1,4 +1,4 @@
-//Para compilar: g++ -o guia5 guia5.cpp -O0 -lm -lpthread -lX11 -lfftw3 && ./guia5
+//Para compilar: g++ -o tp main.cpp -O0 -lm -lpthread -lX11 -lfftw3
 
 #include <iostream>
 #include "../../CImg-1.5.4/CImg.h"
@@ -208,11 +208,12 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 
     }
 
-    //Volvemos al rango original entre 0 y 255
-    base.normalize(0,255);
+    //Volvemos al rango entre 0 y 1 (ya que es intensidad en double en HSI)
+    base.normalize(0, 1);
 
     return base;
 }
+
 
 ///FUNCION SEGMENTAR:
 ///     INPUT:
@@ -227,21 +228,21 @@ CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
                       unsigned int tam_suavizado = 15,
                       double umbral_segmentacion=0.15){
 
-    //Creamos una imagen con el valor absoluto de la diferencia de
-    //las dos imagenes de entrada.
-        CImg<double> diferencia(abs(img1 - img2));
+ //Creamos una imagen con el valor absoluto de la diferencia de
+ //las dos imagenes de entrada.
+     CImg<double> diferencia(abs(img1 - img2));
 
-    //Suavizamos la imagen para quitar imperfecciones y dejar los valores
-    //de la resta mas uniformes
-        CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 1, 1);
-        diferencia.convolve(filtro_suavizado).normalize(0,1);
+ //Suavizamos la imagen para quitar imperfecciones y dejar los valores
+ //de la resta mas uniformes
+     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 1, 1);
+     diferencia.convolve(filtro_suavizado).normalize(0,1);
 
-    //Aplicamos umbralizacion
-        CImg<bool> mascara(img1.width(), img1.height(), 1, 1);
-        cimg_forXY(mascara, x, y){
-             //(media - desvio * umbral_segmentacion)
-            mascara(x,y) = (diferencia(x,y) > umbral_segmentacion) ? 1 : 0;
-        }
+ //Aplicamos umbralizacion
+     CImg<bool> mascara(img1.width(), img1.height(), 1, 1);
+     cimg_forXY(mascara, x, y){
+          //(media - desvio * umbral_segmentacion)
+         mascara(x,y) = (diferencia(x,y) > umbral_segmentacion) ? 1 : 0;
+     }
 
 //      SEGUNDO SUAVIZADO, OPCIONAL
 //        (mascara, mascara.convolve(filtro_suavizado)
@@ -255,9 +256,9 @@ CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
 //
 //        (diferencia, mascara).display();
 
-        return mascara;
+     return mascara;
 
-    }
+}
 
 
 ///Funcion principal que hace todo
@@ -315,6 +316,8 @@ void nighttimeEnhacement(
 
     unsigned int contador = 1;
 
+    CImg<double> promediado(tamanho_prom_hue, tamanho_prom_hue, 1, 1, 1);
+
     // Vamos recorriendo cada path en el archivo y analizando la imagen
     while(!f.eof()) {
 
@@ -328,28 +331,43 @@ void nighttimeEnhacement(
         // TRABAJAMOS CON LA IMAGEN
         image.RGBtoHSI();
 
-        CImg<double> intensidad(denighting(image.get_channel(2),
+        CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
+        CImg<double> saturation(image.get_channel(1));
+        CImg<double> intensity_night(image.get_channel(2));
+
+        CImg<double> intensidad(denighting(intensity_night,
                                            ratio,
                                            option_fc, option_gl, option_gh, option_c ));
 
-        CImg<double> promediado(tamanho_prom_hue, tamanho_prom_hue, 1, 1, 1);
+        CImg<bool> mascara_seg(segmentar(intensity_night,
+                                         nighttime_bg.get_channel(2)));
+        cimg_forXY(mascara_seg, x, y){
 
-        CImg<double> intensity_night(image.get_channel(2));
-        CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
-        CImg<double> saturation(image.get_channel(1));
+            double val = intensidad(x,y) + intensity_night(x,y) * mascara_seg(x,y) ;
+            intensidad(x,y) = (val > 1) ? 1 : val;
 
-        intensidad.normalize(0, 1);
+            double satur = intensity_night(x, y) * option_fs + saturation(x, y) * (1.0 - option_fs);
+            satur = (mascara_seg(x, y) == 1) ? saturation(x, y) : satur;
+
+            // Nos quedamos con la menor saturacion (no inventamos saturacion)
+            saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+        }
 
 		// Hacemos una transformacion lineal sobre la saturacion para disminuirla.
 		// Para hacer la transformacion nos basamos en informacion de intensidad
 		// de la imagen a procesar. Si la intensidad es muy baja, la saturacion tambien
 		// debe serlo. De esta manera atenuamos los falsos colores que se generan
 		// a causa de la poca informacion de color de la imagen de noche.
-		cimg_forXY(saturation, x, y) {
-		    double intensity_n = (intensity_night(x, y) < option_fs) ? intensity_night(x, y) / option_fs : 1;
-		    double val = saturation(x, y) * intensity_n * pendiente_saturacion;
-			saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
-		}
+        /*saturation.display();
+        cimg_forXY(saturation, x, y) {
+            double intensity_n = (intensity_night(x, y) < option_fs) ? intensity_night(x, y) / option_fs : 1;
+            double val = intensity_n * pendiente_saturacion;
+            saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
+        }
+        (intensity_night, saturation).display();*/
+
+        /// Hago una interpolacion entre la intensidad de noche y la saturacion de noche
+        //saturation = intensity_night * option_fs + saturation * (1.0 - option_fs);
 
         image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
@@ -359,6 +377,8 @@ void nighttimeEnhacement(
         //(original, image).display("MARCOUSOSUCOUSOU", 0);
         //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
         //(image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
+
+        cout << "Imagen procesada: " << image_file << endl;
 
         contador++;
     }
@@ -389,7 +409,7 @@ int main(int argc, char *argv[]){
     const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
     const double _psi = cimg_option("-psi", -1.0, "Factor de correccion psi");
 
-    const int _fs = cimg_option("-fs", 0.03, "Factor de Saturacion en la pendiente");
+    const double _fs = cimg_option("-fs", 0.9, "Factor de Saturacion en la pendiente");
 
     const int _fc = cimg_option("-fc", 150, "Frecuencia de Corte");
     const double _gl = cimg_option("-gl", 1.0, "Gamma Low");
