@@ -343,7 +343,7 @@ void nighttimeEnhacement(
                                          nighttime_bg.get_channel(2)));
         cimg_forXY(mascara_seg, x, y){
 
-            double val = intensidad(x,y) + intensity_night(x,y) * mascara_seg(x,y) ;
+            double val = intensidad(x,y) * (1.0 - mascara_seg(x,y)) + intensity_night(x,y) * mascara_seg(x,y) ;
             intensidad(x,y) = (val > 1) ? 1 : val;
 
             double satur = intensity_night(x, y) * option_fs + saturation(x, y) * (1.0 - option_fs);
@@ -378,7 +378,7 @@ void nighttimeEnhacement(
         //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
         //(image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
 
-        cout << "Imagen procesada: " << image_file << endl;
+        cout << "Imagen procesada: " << image_file << "\tImagen salida: " << str_resultado << endl;
 
         contador++;
     }
