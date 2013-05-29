@@ -443,8 +443,8 @@ int main(int argc, char *argv[]){
     const double _fs = cimg_option("-fs", 0.9, "Factor de Saturacion en la pendiente");
 
     const int _fc = cimg_option("-fc", 150, "Frecuencia de Corte");
-    const double _gl = cimg_option("-gl", 1.0, "Gamma Low");
-    const double _gh = cimg_option("-gh", 0.0, "Gamma High");
+    const double _gl = cimg_option("-gl", 0.6, "Gamma Low");
+    const double _gh = cimg_option("-gh", 25.0, "Gamma High");
     const double _c = cimg_option("-c", 1.0, "Offset");
     const double _ps = cimg_option("-ps", 1.0, "Pendiente transf. lineal a saturacion");
 
