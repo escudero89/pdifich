@@ -245,14 +245,19 @@ CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
                       unsigned int tam_suavizado = 15,
                       double umbral_segmentacion=0.2){
 
+ //Suavizamos la imagen para quitar imperfecciones y dejar los valores
+ //de la resta mas uniformes
+ CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 3, 1);
+ img1.convolve(filtro_suavizado);
+ img2.convolve(filtro_suavizado);
+
  //Creamos una imagen con el valor absoluto de la diferencia de
  //las dos imagenes de entrada.
      CImg<double> diferencia(abs(img1 - img2));
 //diferencia.display("diferencia");
 
- //Suavizamos la imagen para quitar imperfecciones y dejar los valores
- //de la resta mas uniformes
-     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 3, 1);
+
+
 //filtro_suavizado.display("Filtro");
 
      diferencia.convolve(filtro_suavizado).normalize(0,1);
@@ -279,7 +284,7 @@ CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
 //            mascara(x,y) = (mascara(x,y) > media + desvio * umbral_segmentacion) ? true : false;
 //        }
 //
-        (diferencia, mascara).display();
+        //(diferencia, mascara).display();
 
      return mascara;
 
@@ -366,30 +371,30 @@ void nighttimeEnhacement(
 
 
 
-        CImg<double> intensidad(denighting(intensity_night,
-                                           ratio,
-                                           option_fc, option_gl, option_gh, option_c ));
+//        CImg<double> intensidad(denighting(intensity_night,
+//                                          ratio,
+//                                         option_fc, option_gl, option_gh, option_c ));
 
         CImg<bool> mascara_seg(segmentar(image.get_HSItoRGB(),
                                          nighttime_bg.get_HSItoRGB(),
                                          promediadosegmentacion,
                                          umbralsegmentacion));
-        cimg_forXY(mascara_seg, x, y){
-
-            /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
-            if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
-                intensidad(x, y) = intensity_night(x, y);
-
-            } else { // background estatico
-                hue(x, y) = daytime_bg_hue(x, y);
-
-                double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
-
-                // Nos quedamos con la menor saturacion (no inventamos saturacion)
-                saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
-
-                // No hay cambios en la intensidad
-            }
+//        cimg_forXY(mascara_seg, x, y){
+//
+//            /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
+//            if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
+//                intensidad(x, y) = intensity_night(x, y);
+//
+//            } else { // background estatico
+//                hue(x, y) = daytime_bg_hue(x, y);
+//
+//                double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
+//
+//                // Nos quedamos con la menor saturacion (no inventamos saturacion)
+//                saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+//
+//                // No hay cambios en la intensidad
+//            }
 
             /*
             hue(x, y) = daytime_bg_hue(x, y) * (1 - mascara_seg(x, y)) + hue(x,y) * mascara_seg(x,y);
@@ -403,7 +408,7 @@ void nighttimeEnhacement(
             // Nos quedamos con la menor saturacion (no inventamos saturacion)
             saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
             */
-        }
+        //}
 
 		// Hacemos una transformacion lineal sobre la saturacion para disminuirla.
 		// Para hacer la transformacion nos basamos en informacion de intensidad
@@ -421,11 +426,11 @@ void nighttimeEnhacement(
         /// Hago una interpolacion entre la intensidad de noche y la saturacion de noche
         //saturation = intensity_night * option_fs + saturation * (1.0 - option_fs);
 
-        image = join_channels(hue, saturation, intensidad);
-        image.HSItoRGB();
+        //image = join_channels(hue, saturation, intensidad);
+        //image.HSItoRGB();
 
-        image.save(str_resultado.c_str(), contador);
-
+        //image.save(str_resultado.c_str(), contador);
+        (mascara_seg * 255).save(str_resultado.c_str(), contador);
         //(original, image).display("MARCOUSOSUCOUSOU", 0);
         //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
         //(image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
