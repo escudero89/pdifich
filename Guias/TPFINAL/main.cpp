@@ -193,8 +193,8 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 
     CImgList<double> LRbase(decouplingLR(base, option_fc, option_gl, option_gh, option_c));
 
-    CImg<double> f_promediado(7,7,1,1,1);
-    LRbase[0].convolve(f_promediado);
+    //CImg<double> f_promediado(7,7,1,1,1);
+    //LRbase[0].convolve(f_promediado);
 
     //Normalizamos entre 1 y 2 para que no moleste la division por cero
     LRbase[0].normalize(1,2);
@@ -226,7 +226,7 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 ///         Mascara booleana con la imagen segmentada
 CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
                       unsigned int tam_suavizado = 15,
-                      double umbral_segmentacion=0.15){
+                      double umbral_segmentacion=0.2){
 
  //Creamos una imagen con el valor absoluto de la diferencia de
  //las dos imagenes de entrada.
@@ -303,8 +303,6 @@ void nighttimeEnhacement(
     CImg<double> daytime_bg((carpetaInResultado + day_file).c_str());
     CImg<double> nighttime_bg((carpetaInResultado + night_file).c_str());
 
-
-
     daytime_bg.RGBtoHSI();
     nighttime_bg.RGBtoHSI();
 
@@ -318,6 +316,9 @@ void nighttimeEnhacement(
 
     unsigned int contador = 1;
 
+    CImg<double> daytime_bg_hue(daytime_bg.get_channel(0));
+    CImg<double> daytime_bg_saturation(daytime_bg.get_channel(1));
+
     CImg<double> promediado(tamanho_prom_hue, tamanho_prom_hue, 1, 1, 1);
 
     // Vamos recorriendo cada path en el archivo y analizando la imagen
@@ -328,14 +329,12 @@ void nighttimeEnhacement(
         CImg<double> image((carpetaInResultado + image_file).c_str());
         CImg<double> original(image);
 
-
-
         // TRABAJAMOS CON LA IMAGEN
         image.RGBtoHSI();
         image = correccionPsi(image, psi);
 
         CImg<double> hue(image.get_channel(0).get_convolve(promediado).get_normalize(0, 359));
-        CImg<double> saturation(image.get_channel(1));
+        CImg<double> saturation(image.get_channel(1) /*image.get_channel(1)*/);
         CImg<double> intensity_night(image.get_channel(2));
 
 
@@ -348,6 +347,24 @@ void nighttimeEnhacement(
                                          nighttime_bg.get_channel(2)));
         cimg_forXY(mascara_seg, x, y){
 
+            /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
+            if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
+                intensidad(x, y) = intensity_night(x, y);
+
+            } else { // background estatico
+                hue(x, y) = daytime_bg_hue(x, y);
+
+                double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
+                
+                // Nos quedamos con la menor saturacion (no inventamos saturacion)
+                saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+
+                // No hay cambios en la intensidad                
+            }
+
+            /*
+            hue(x, y) = daytime_bg_hue(x, y) * (1 - mascara_seg(x, y)) + hue(x,y) * mascara_seg(x,y);
+
             double val = intensidad(x,y) * (1.0 - mascara_seg(x,y)) + intensity_night(x,y) * mascara_seg(x,y) ;
             intensidad(x,y) = (val > 1) ? 1 : val;
 
@@ -356,6 +373,7 @@ void nighttimeEnhacement(
 
             // Nos quedamos con la menor saturacion (no inventamos saturacion)
             saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+            */
         }
 
 		// Hacemos una transformacion lineal sobre la saturacion para disminuirla.
@@ -383,7 +401,8 @@ void nighttimeEnhacement(
         //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
         //(image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
 
-        cout << "Imagen procesada: " << image_file << "\tImagen salida: " << str_resultado << endl;
+        cout << "Imagen procesada: " << image_file;
+        cout << "\tImagen salida: " << "resultado_" << contador << ".png" << endl;
 
         contador++;
     }
