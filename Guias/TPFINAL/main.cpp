@@ -154,6 +154,13 @@ CImgList<double> decouplingLR(
         reflactancia(i,j) = img(i,j) / luminancia(i,j);
     }
 
+    reflactancia.blur_median(7);
+
+    CImg<double> f_promediado(5,5,1,1,1);
+    f_promediado = f_promediado / 25;
+
+    reflactancia.convolve(f_promediado);
+
     luminancia.normalize(0, 255);
     reflactancia.normalize(0, 255);
 
@@ -355,11 +362,11 @@ void nighttimeEnhacement(
                 hue(x, y) = daytime_bg_hue(x, y);
 
                 double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
-                
+
                 // Nos quedamos con la menor saturacion (no inventamos saturacion)
                 saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
 
-                // No hay cambios en la intensidad                
+                // No hay cambios en la intensidad
             }
 
             /*
