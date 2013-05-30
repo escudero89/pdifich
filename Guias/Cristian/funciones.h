@@ -475,5 +475,54 @@ CImg<bool> get_mask_from_RGB(
     return mascara;
 }
 
+/// Guarda los valores de una imagen 2D en un archivo (lo deja como vector)
+template<typename T>
+void image_to_text(CImg<T> image, const char * filename) {
+
+    unsigned int MAX_ELEMENTS = image.width() * image.height() * image.spectrum();
+    unsigned int kContador = 0;
+
+    ofstream f(filename);
+    assert(f.is_open());
+
+    cimg_forXYC(image, x, y, c) {
+
+        f << image(x, y, c);
+
+        // Le agregamos comas a todos menos al ultimo elemento
+        if (kContador < MAX_ELEMENTS - 1) {
+             f << " ";
+             kContador++;
+        }
+
+    }
+
+
+    f.close();
+
+}
+
+/// Restaura los valores de un vector 1D desde un archivo
+template<typename T>
+CImg<T> image_to_text(const char * filename) {
+
+    CImg<T> retorno;
+
+    ifstream f(filename);
+    assert(f.is_open());
+
+    T valor;
+
+    while (f >> valor) {
+        retorno.resize(retorno.width() + 1, -100, -100, -100, 0);
+        retorno(retorno.width() - 1) = valor;
+    }
+
+    f.close();
+
+    return retorno;
+}
+
+
 /// END NAMESPACE
 }
