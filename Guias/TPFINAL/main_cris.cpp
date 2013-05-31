@@ -235,18 +235,13 @@ CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
                       unsigned int tam_suavizado = 15,
                       double umbral_segmentacion=0.2){
 
- //Suavizamos la imagen para quitar imperfecciones y dejar los valores
- //de la resta mas uniformes
-     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 3, 1);
-     //img1.convolve(filtro_suavizado);
-     //img2.convolve(filtro_suavizado);
-
  //Creamos una imagen con el valor absoluto de la diferencia de
  //las dos imagenes de entrada.
      CImg<double> diferencia(abs(img1 - img2));
 
  //Suavizamos la imagen para quitar imperfecciones y dejar los valores
- //de la resta mas uniformes     
+ //de la resta mas uniformes
+     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 1, 1);
      diferencia.convolve(filtro_suavizado).normalize(0,1);
 
  //Aplicamos umbralizacion
@@ -333,13 +328,6 @@ void nighttimeEnhacement(
 
     CImg<double> promediado(tamanho_prom_hue, tamanho_prom_hue, 1, 1, 1);
 
-    // Para enmascarar la diferencia entre imagenes denighteadas
-    CImg<double> nighttime_bg_intensidad(denighting(nighttime_bg.get_channel(2),
-                                                    ratio,
-                                                    option_fc, option_gl, option_gh, option_c ));
-
-    nighttime_bg_intensidad.equalize(256);
-
     // Vamos recorriendo cada path en el archivo y analizando la imagen
     while(!f.eof()) {
 
@@ -359,42 +347,71 @@ void nighttimeEnhacement(
         CImg<double> intensidad(denighting(intensity_night,
                                            ratio,
                                            option_fc, option_gl, option_gh, option_c ));
-/*
-        if (nighttime_bg_intensidad.is_empty()) {
-            nighttime_bg_intensidad = intensidad.get_equalize(256);
-        }*/
-
-        intensidad.equalize(256);
 
         CImg<bool> mascara_seg(segmentar(intensity_night,
                                          nighttime_bg.get_channel(2)));
 
-        CImg<bool> mascara_den(segmentar(intensidad,
-                                         nighttime_bg_intensidad));
+        CImg<double> LoG(5, 5);
 
-        CImg<bool> mascara_col(segmentar(hue,
-                                         nighttime_bg.get_channel(0)));
+        LoG(0, 0) = 0;
+        LoG(0, 1) = 0;
+        LoG(0, 2) = -1;
+        LoG(0, 3) = 0;
+        LoG(0, 4) = 0;
 
-        (mascara_seg * 255).save(string(carpetaOutResultado + "mask1.png").c_str(), contador);
-        (mascara_den * 255).save(string(carpetaOutResultado + "mask2.png").c_str(), contador);
-        (mascara_col * 255).save(string(carpetaOutResultado + "mask3.png").c_str(), contador);
+        LoG(1, 0) = 0;
+        LoG(1, 1) = -1;
+        LoG(1, 2) = -2;
+        LoG(1, 3) = -1;
+        LoG(1, 4) = 0;
 
+        LoG(2, 0) = -1;
+        LoG(2, 1) = -2;
+        LoG(2, 2) = 16;
+        LoG(2, 3) = -2;
+        LoG(2, 4) = -1;
+
+        LoG(3, 0) = 0;
+        LoG(3, 1) = -1;
+        LoG(3, 2) = -2;
+        LoG(3, 3) = -1;
+        LoG(3, 4) = 0;
+
+        LoG(4, 0) = 0;
+        LoG(4, 1) = 0;
+        LoG(4, 2) = -1;
+        LoG(4, 3) = 0;
+        LoG(4, 4) = 0;
+
+
+        CImg<double> mascara_bor(mascara_seg.get_convolve(LoG));
+        mascara_bor.threshold(0.5);
+        
         cimg_forXY(mascara_seg, x, y){
 
             /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
-            if (mascara_seg(x, y) || mascara_den(x, y) || mascara_col(x, y)) { // movimiento (solo cambio intensidad)
-                intensidad(x, y) = intensity_night(x, y);
+            if (mascara_bor(x, y)) { // movimiento (solo cambio intensidad)
+                hue(x, y) = 0;
+                saturation(x, y) = 1;
+                intensidad(x, y) = 1;
+            
+            } else { 
 
-            } else { // background estatico
-                hue(x, y) = daytime_bg_hue(x, y);
+                if (mascara_seg(x, y)) {
+                    intensidad(x, y) = intensity_night(x, y) * option_fs + intensidad(x, y) * (1.0 - option_fs);
+                } else {
+                 // background estatico
+                    hue(x, y) = daytime_bg_hue(x, y);
 
-                double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
+                    double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
 
-                // Nos quedamos con la menor saturacion (no inventamos saturacion)
-                saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+                    // Nos quedamos con la menor saturacion (no inventamos saturacion)
+                    saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
 
-                // No hay cambios en la intensidad
+                    // No hay cambios en la intensidad
+                }
             }
+            //}
 
             /*
             hue(x, y) = daytime_bg_hue(x, y) * (1 - mascara_seg(x, y)) + hue(x,y) * mascara_seg(x,y);
