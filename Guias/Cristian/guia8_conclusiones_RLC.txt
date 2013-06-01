@@ -1,0 +1,108 @@
+Varíamos solamente el ancho de banda.
+
+RESULTADOS
+==========
+
+ESTAMBUL.TIF
+------------------------------
+
+* 3 : Defecto en el cielo (ZH), pero en el resto de la imagen se ve bien.
+
+	Tamaño de la imagen original: 358 Kb.
+	Tamaño de la imagen comprimida: 77 Kb.
+	Tasa de compresión: 4.64935
+	MSE orig-decomp:    428.586
+
+
+* 7 : Se nota el efecto de ruido en zona homogénea.
+
+	Tamaño de la imagen original: 358 Kb.
+	Tamaño de la imagen comprimida: 77 Kb.
+	Tasa de compresión: 4.64935
+	MSE orig-decomp:    429.041
+
+* 14 : Bastante más ruido en ZH, peor calidad.
+
+	Tamaño de la imagen original: 358 Kb.
+	Tamaño de la imagen comprimida: 51 Kb.
+	Tasa de compresión: 7.01961
+	MSE orig-decomp:    439.633
+	
+* 28: Deja un efecto más feo en bordes incluso.
+
+	Tamaño de la imagen original: 358 Kb.
+	Tamaño de la imagen comprimida: 27 Kb.
+	Tasa de compresión: 13.2593
+	MSE orig-decomp:    464.225
+
+
+HUANG1.JPG (poco detalle)
+------------------------------
+
+* 3 : La imagen descomprimida parece un poquito más brillante. CR menor a la mitad (horrible compresión).
+
+	Tamaño de la imagen original: 48 Kb.
+	Tamaño de la imagen comprimida: 110 Kb.
+	Tasa de compresión: 0.436364
+	MSE orig-decomp:    124.601
+
+* 7 : Comienza a aparecer ruidito en ZH. CR < 1 aún.
+
+	Tamaño de la imagen original: 48 Kb.
+	Tamaño de la imagen comprimida: 62 Kb.
+	Tasa de compresión: 0.774194
+	MSE orig-decomp:    128.883
+
+* 14 : Comprimió bien, pero a costa de ruido en ZHs.
+
+	Tamaño de la imagen original: 48 Kb.
+	Tamaño de la imagen comprimida: 32 Kb.
+	Tasa de compresión: 1.5
+	MSE orig-decomp:    158.523
+
+* 28 : Aparición de falsos bordes, y mucho ruido en ZHs.
+
+	Tamaño de la imagen original: 48 Kb.
+	Tamaño de la imagen comprimida: 16 Kb.
+	Tasa de compresión: 3
+	MSE orig-decomp:    259.703
+
+
+HUANG3.JPG (mucho detalle)
+------------------------------
+
+* 3 : No hay diferencia perceptible. Muy mala compresión (CR casi la mitad).
+
+	Tamaño de la imagen original: 66 Kb.
+	Tamaño de la imagen comprimida: 111 Kb.
+	Tasa de compresión: 0.594595
+	MSE orig-decomp:    944.791
+
+* 7 : La imagen se ve igual. Pero nótese que la CR fue menor que 1 (mala compresión).
+
+	Tamaño de la imagen original: 66 Kb.
+	Tamaño de la imagen comprimida: 92 Kb.
+	Tasa de compresión: 0.717391
+	MSE orig-decomp:    945.565
+
+* 14 : La imagen se sigue viendo igual. La CR sigue siendo menor a 1.
+
+	Tamaño de la imagen original: 66 Kb.
+	Tamaño de la imagen comprimida: 70 Kb.
+	Tasa de compresión: 0.942857
+	MSE orig-decomp:    947.641
+
+* 28 : La imagen se mantiene igual. La CR al fin es mayor que 1 (por poco).
+
+	Tamaño de la imagen original: 66 Kb.
+	Tamaño de la imagen comprimida: 46 Kb.
+	Tasa de compresión: 1.43478
+	MSE orig-decomp:    962.248
+
+
+CONCLUSIÓN
+==========
+
+En tamaños de ventana grandes (14 ~ 28) se tiende a comprimir. En tamaños de ventana pequeños (3 ~ 7), la compresión es muy mala. Estanbul comprime bastante porque el formato .tif guarda muchos datos. Si transformamos la imagen a .png o .jpeg, se nota que le ocurre lo mismo que a las otras imágenes analizadas.
+
+La mejor compresión lo tenemos, claramente, en imágenes con mucha ZHs (zonas homogéneas).
