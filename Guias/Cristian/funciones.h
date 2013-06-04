@@ -3,6 +3,9 @@
 #include <iostream>
 #include <cstring>
 
+#define EPSILON 0.00001
+#define PI 3.14159265359
+
 #include "../../CImg-1.5.4/CImg.h"
 
 using namespace cimg_library;
@@ -685,6 +688,240 @@ CImg<T> replace_value_for(CImg<T> base, T referencia, T reemplazo = 0) {
 
     return base;
 }
+
+///#################################################################################///
+/// FILTROS DE MEDIA Y ORDENAMIENTO ///
+///#################################################################################///
+
+/// ESTOS SON SOLO VENTANAS
+/// Aplico la media geometrica a una ventana que me pasan, y retorno el valor del punto x,y
+double apply_geometric_mean(CImg<double> ventana) {
+    double retorno = 1;
+    double mn = ventana.width() * ventana.height();
+    cimg_forXY(ventana, s, t) {
+        // Le multiplicamos para hacer la productoria
+        retorno *= ventana(s, t);
+    }
+
+    // Si me da negativo, no le pongo la raiz, sino que le asigno 0
+    retorno = (retorno < 0) ? 0 : pow(retorno, 1 / mn);
+
+    return retorno;
+}
+
+/// Aplico la media contra-armonica a una ventana que me pasan con orden Q,
+// y retorno el valor del punto x,y
+double apply_contraharmonic_mean(CImg<double> ventana, double Q) {
+    double numerador = 0;
+    double denominador = 0;
+
+    cimg_forXY(ventana, s, t) {
+        numerador += pow(ventana(s, t), Q + 1);
+        denominador += pow(ventana(s, t), Q);
+    }
+
+    // Evitamos dividir por cero (definir un epsilon? @fern17 ain't nobody got time fo dat)
+    if (!(abs(denominador) < EPSILON )) {
+        numerador /= denominador;
+    } else {
+        numerador = 0; // o dividir por infinito, que es cero
+    }
+
+    return numerador;
+}
+
+/// Filtros de ordenamiento: mediana
+double apply_median(CImg<double> ventana) {
+    // Los ordeno
+    ventana.sort();
+
+    // retorno el que este en el medio
+    return ventana(ventana.width() / 2, ventana.height() / 2);
+}
+
+/// Filtro del punto medio
+double apply_midpoint(CImg<double> ventana) {
+    // Obtengo el valor maximo y el minimo de la ventana
+    double max = ventana.max();
+    double min = ventana.min();
+
+    return 0.5 * (max + min);
+}
+
+/// Filtro de media-alfa recortado (el d es la mitad de la formula 5.3-11 p246)
+double apply_alpha_trimmed_mean(CImg<double> ventana, unsigned int d = 2) {
+
+    unsigned int m = ventana.width();
+    unsigned int n = ventana.height();
+    int factor = m * n - 2 * d;
+
+    double coeff = 1.0 / factor;
+    double sumatoria = 0;
+
+    // Lo ordeno 
+    ventana.sort();
+
+    // Pero en la sumatoria solo considero los que estan dentro de la ventana mn - d
+    for (unsigned int k = d; k < (m * n - d); k++) {
+        // El modulo me da la columna, la division la fila
+        unsigned int columna = k % m;
+        unsigned int fila = floor(k / n);
+
+        sumatoria += ventana(columna, fila);
+    }
+
+    double retorno = coeff * sumatoria;
+
+    // Si el valor del factor es 0 o menor, retorno el pixel original sin procesar
+    if (factor <= 0) {
+        retorno = ventana(m / 2, n / 2);
+    }
+
+    return retorno;
+}
+
+/// Aplico el filtro de la media geometrica a una imagen base, usando una ventana S de MxN
+// Tipo_filtro : g [Geometrica], c [Contra-armonica], m [mediana], p [midpoint], a [alpha-trimmed]
+// el factor es el orden en el contraarmonica, y el d en el alfa recortado
+CImg<double> apply_mean(
+    CImg<double> base,
+    unsigned char tipo_filtro = 'g',
+    double factor = 0,
+    int m = 3,
+    int n = 3) {
+
+    // Mi ventana
+    CImg<double> procesada(base);
+    CImg<double> S;
+
+    // Para determinar el tamanho de las ventanas
+    int step_x = m / 2;
+    int step_y = n / 2;
+
+    // Recorro la base y voy tomando ventanas (recorro por espectro tambien)
+    cimg_forXYC(base, x, y, c) {
+
+        double pixel_procesado;
+
+        // Esto es para evitar que se me vaya del rango
+        int x0 = (x - step_x < 0) ? 0 : x - step_x;
+        int y0 = (y - step_y < 0) ? 0 : y - step_y;
+        int x1 = (x + step_x >= base.width()) ? base.width() - 1 : x + step_x;
+        int y1 = (y + step_y >= base.height()) ? base.height() - 1 : y + step_y;
+
+        // Obtengo la ventana S (en cada canal)
+        S = base.get_crop(x0, y0, 0, c, x1, y1, 0, c);
+
+        // Aplico el filtro media geometrica
+        if (tipo_filtro == 'g') {
+            pixel_procesado = apply_geometric_mean(S);
+        // Contra-armonica
+        } else if (tipo_filtro == 'c') {
+            pixel_procesado = apply_contraharmonic_mean(S, factor);
+        // Mediana
+        } else if (tipo_filtro == 'm') {
+            pixel_procesado = apply_median(S);
+        // Midpoint
+        } else if (tipo_filtro == 'p') {
+            pixel_procesado = apply_midpoint(S);
+        // Media Alpha Recortada
+        } else if (tipo_filtro == 'a') {
+            pixel_procesado = apply_alpha_trimmed_mean(S, factor);
+        }
+
+        procesada(x, y, c) = pixel_procesado;
+
+    }
+
+    return procesada;
+
+}
+
+///#################################################################################///
+
+/// En base a la coordenada y al eje, me retorna el valor que correspende la transformada Hough
+// en grados para theta (t) entre [-90 ; 90] y entre [-sqrt(2)M;sqrt(2)M] el rho (p)
+template <typename T>
+double coord_hough_to_value(CImg<T> hough, int coord, unsigned char axis) {
+
+    unsigned int M = hough.width();
+    unsigned int N = hough.height();
+
+    // Maximos valores absolutos de theta y de rho
+    double max_theta = 90;
+    double max_rho = pow(pow(M, 2.0) + pow(N, 2.0), 0.5); // si M = N, max_rho = sqrt(2) * M
+
+    // Y le resto para ir al rango normal [-1.0 ~ 1.0]
+    double valor;
+
+    if (axis == 't') { // theta
+        valor = (2.0 * coord / M - 1.0) * max_theta;
+    } else if (axis == 'p') { //rho
+        valor = (2.0 * coord / N - 1.0) * max_rho;
+    } else {
+        assert(axis && 0); // aviso del error
+    }
+
+    return valor;
+}
+
+/// Le mandamos una transformada de Hough, y recorta solo en el angulo y rho que le pedimos
+// El angulo se lo pasas en grados [-90..90], y el coord_rho en posicion en pixeles en hough
+// La tolerancia se mide en celdas acumuladoras de separacion (no en %).
+// El just_max me indica si saca todos los puntos en el area, o solo el maximo.
+template <typename T>
+CImg<T> slice_hough(
+    CImg<T> Hough, 
+    double angulo, 
+    double row_hough,
+    int ang_tol = 0, 
+    int rho_tol = 0,
+    bool just_max = false) {
+
+    // Obtenemos la columna (le sumo 90 para hacer el rango [0..180])
+    double col_hough = (angulo + 90) / 180 * Hough.width(); 
+
+    // Y ahora la fila (las operaciones de adelante es para escalar entre 0 y 1)
+    //double row_hough = (coord_rho + sqrt(2)) * sqrt(2) / 4 * Hough.height();
+
+    // Guardo el maximo pico
+    double max_pico = 0;
+    double x_max_pico = 0;
+    double y_max_pico = 0;
+
+    CImg<double> auxiliar(Hough.width(), Hough.height(), 1, 1, 0);
+
+    for (int i = -rho_tol ; i <= rho_tol ; i++) {
+        for (int j = -ang_tol ; j <= ang_tol ; j++) {
+            // Evitamos que se nos salga de los limites
+            if (col_hough + i < Hough.width() && col_hough + i >= 0 &&
+                row_hough + j < Hough.height()&& row_hough + j >= 0) {
+
+                x_max_pico = col_hough + i;
+                y_max_pico = row_hough + j;
+
+                // Si solo es el max, sacamos el max, sino todos
+                if (just_max) {
+                    if (Hough(col_hough + i, row_hough + j) > max_pico) {
+                        max_pico = Hough(x_max_pico, y_max_pico);
+                    }
+                } else {
+                    auxiliar(x_max_pico, y_max_pico) = Hough(x_max_pico, y_max_pico);
+                    std::cout << auxiliar(x_max_pico, y_max_pico) << "(" << x_max_pico << "," << y_max_pico << ")"<< std::endl;
+                }
+            }
+        }
+    }
+
+    if (just_max) {
+        auxiliar(x_max_pico, y_max_pico) = Hough(x_max_pico, y_max_pico);
+    } else { // Aplico un umbral asi no me devuelve  todooo
+        auxiliar.threshold(0.3 * auxiliar.mean() + 0.7 * auxiliar.max());
+    }
+
+    return auxiliar;
+}
+
 
 /// END NAMESPACE
 }
