@@ -1,10 +1,92 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <cstring>
 
 #include "../../CImg-1.5.4/CImg.h"
 
 using namespace cimg_library;
+
+//************************************************************************************************//
+/*
+/// Le paso 3 imagenes distintas (con un canal cada una), y me retorna una imagen combinada de estas    
+CImg<T> join_channels(CImg<T> canal_1, CImg<T> canal_2 = CImg<T>(), CImg<T> canal_3 = CImg<T>());
+
+/// Devuelve una imagen convolucionada con una matriz de NxN, con los valores pasados en el array
+CImg<T> get_filter(
+    CImg<T> base, 
+    unsigned int N, 
+    double array[], 
+    double factor_escala = 1,
+    bool acotar = false);
+
+/// Retorna una imagen a la que le aplicamos un filtro de 3x3 definidos aqui
+CImg<T> get_image_filtered(CImg<T> base, char tipo_filtro, char version_filtro = 0);
+
+/// Le pasas una imagen y una mascara: Retorna la imagen con la mascara aplicada
+CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara);
+
+/// Obtengo un filtro desde un archivo de texto 
+CImg<T> get_filter_from_file(std::string nombre);
+
+/// Aplica el logaritmo a cada pixel de una imagen
+CImg<T> get_log(CImg<T> base);
+
+/// Obtengo la distancia al punto (x, y) desde cada punto de base, o al punto ubicado
+// en (x - x0, v - v0) y (x + x0, v + v0), siendo que este separado del centro (para notch-filters)
+CImg<T> get_D_matriz(CImg<T> base, int x = -1, int y = -1, int x0 = 0, int y0 = 0);
+
+/// Devuelve la magnitud y la fase en dos imagenes de la CImgList del espectro de fourier
+CImgList<T> get_magnitude_phase(CImgList<T> fourier);
+
+/// A partir de la magnitud y fase, obtiene la imagen en componentes complejas
+CImgList<T> get_fft_from_magn_phse(CImg<T> magnitud, CImg<T> fase);
+
+/// Version sobrecargado de lo anterior
+CImgList<T> get_fft_from_magn_phse(CImgList<T> magnitud_fase);
+
+/// A partir de la imagen de magnitud y fase, las une y retorna la imagen procesada antitransformada
+CImg<T> get_image_from_magn_phse(CImg<T> magnitud, CImg<T> fase);
+
+/// Version sobrecargado de lo anterior
+CImg<T> get_image_from_magn_phse(CImgList<T> magnitud_fase);
+
+/// Retorno una convolucion de una imagen con un filtro trabajando en el espectro de frec
+CImg<T> get_img_from_filter(CImg<T> base, CImgList<T> filtro);
+
+/// Me fusiona dos imagenes complejas (fusiona, NO suma, se queda con el valor mas grande)
+// El ultimo parametro es para preguntar que tiene mas ponderancia (valores altos o bajos)
+CImgList<T> fusion_complex_images(CImgList<T> f1, CImgList<T> f2, bool lower = false);
+
+/// Transforma una imagen a escala de grises, con depth cantidad de canales (rgb=3, else 1)
+CImg<T> transform_to_grayscale(CImg<T> imagen, bool rgb = false);
+
+/// Obtengo un filtro (i: ideal, b: butterworth [requiere orden], g: gaussian [requiere var])
+// El modificador va a ser el orden en el caso del butterworth, y la varianza en el gaussiano
+CImgList<> get_filter(
+    CImg<double> base, 
+    unsigned int cutoff_frecuency, 
+    unsigned char tipo_filtro = 'i', 
+    double modificador = 2);
+
+/// Le pasas una imagen, un centro y un radio de la esfera en el plano R, G, y B. 
+ // Devuelve la mascara (el tipo me dice si es norma2 [s])
+CImg<bool> get_mask_from_RGB(
+    CImg<T> base, 
+    T centro_R, 
+    T centro_G, 
+    T centro_B, 
+    T radio, 
+    char tipo = 's');
+
+/// Guarda los valores de una imagen 2D en un archivo (lo deja como vector)
+void image_to_text(CImg<T> image, const char * filename);
+
+
+*/
+//************************************************************************************************//
+
+
 
 /// Utilizo un propio namespace asi no conflictuo con otras funciones
 namespace cimg_ce {
@@ -60,7 +142,7 @@ CImg<T> get_filter(
 }
 
 
-/// Retorna una imagen a la que le aplicamos un filtro de 3x3
+/// Retorna una imagen a la que le aplicamos un filtro de 3x3 definidos aqui
 template <typename T>
 CImg<T> get_image_filtered(CImg<T> base, char tipo_filtro, char version_filtro = 0) {
 
@@ -148,7 +230,6 @@ CImg<T> get_image_filtered(CImg<T> base, char tipo_filtro, char version_filtro =
 
 	return retorno;
 }
-
 /// Le pasas una imagen y una mascara: Retorna la imagen con la mascara aplicada
 template <typename T>
 CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara) {
@@ -165,9 +246,9 @@ CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara) {
 
 /// Obtengo un filtro desde un archivo de texto (se lo robe a fer :3 y la mejore :$)
 template <typename T>
-CImg<T> get_filter_from_file(const char * nombre) {
+CImg<T> get_filter_from_file(std::string nombre) {
 
-    std::ifstream f(nombre);
+    std::ifstream f(nombre.c_str());
 
     // Si no pudo abrirlo, problema vieja
     assert(f.is_open());
@@ -205,7 +286,7 @@ CImg<T> get_filter_from_file(const char * nombre) {
     }
 
     f.close();
-    salida.display();
+    salida.display("from_file", 0);
     return salida;
 }
 
@@ -521,6 +602,49 @@ CImg<T> image_to_text(const char * filename) {
     f.close();
 
     return retorno;
+}
+
+/// Le paso una imagen, una mascara, y un valor, la idea es retornar el (x, y) de los bordes de 
+// el objeto que tenga ese valor en la imagen, y la imagen recortada en base a la mascara
+
+// Le pasas una imagen, retorna la imagen recortada segun el valor buscado, y las cuatro coord
+// que me indican desde donde fue el corte
+template<typename T>
+CImg<T> get_sliced_object(
+    CImg<T> base, 
+    T valor_buscado, 
+    unsigned int &x_min, 
+    unsigned int &y_min, 
+    unsigned int &x_max, 
+    unsigned int &y_max) {
+
+    // Estos me van a encerrar a mi imagen
+    x_min = base.width();
+    y_min = base.height();
+    x_max = 0;
+    y_max = 0;
+
+    cimg_forXY(base, x, y) {
+        if (base(x, y) == valor_buscado) {
+            if (x > x_max) {
+                x_max = x;
+            } 
+            if (x < x_min) {
+                x_min = x;
+            }
+
+            if (y > y_max) {
+                y_max = y;
+            } 
+            if (y < y_min) {
+                y_min = y;
+            }
+        }
+    }
+
+    base.crop(x_min, y_min, x_max, y_max);
+
+    return base;
 }
 
 
