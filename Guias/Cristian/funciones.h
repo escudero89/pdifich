@@ -27,7 +27,7 @@ CImg<T> get_image_filtered(CImg<T> base, char tipo_filtro, char version_filtro =
 CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara);
 
 /// Obtengo un filtro desde un archivo de texto 
-CImg<T> get_filter_from_file(std::string nombre);
+CImg<T> get_filter_from_file(const char * nombre);
 
 /// Aplica el logaritmo a cada pixel de una imagen
 CImg<T> get_log(CImg<T> base);
@@ -246,9 +246,9 @@ CImg<T> apply_mask(CImg<T> base, CImg<bool> mascara) {
 
 /// Obtengo un filtro desde un archivo de texto (se lo robe a fer :3 y la mejore :$)
 template <typename T>
-CImg<T> get_filter_from_file(std::string nombre) {
+CImg<T> get_filter_from_file(const char * nombre) {
 
-    std::ifstream f(nombre.c_str());
+    std::ifstream f(nombre);
 
     // Si no pudo abrirlo, problema vieja
     assert(f.is_open());
@@ -647,6 +647,44 @@ CImg<T> get_sliced_object(
     return base;
 }
 
+/// Aplico un filtro de gradiente (r: roberts, p: prewitt, s: sobel) a una imagen que le paso
+template <typename T>
+CImg<T> apply_gradient(CImg<T> base, unsigned char tipo = 's') {
+
+    std::string filter_name("filtros/");
+
+    if (tipo == 'r') {
+        filter_name += "roberts_";
+
+    } else if (tipo == 'p') {
+        filter_name += "prewitt_";
+
+    } else {
+        filter_name += "sobel_";
+    }
+
+    CImg<double> filtro_gx(get_filter_from_file<double>((filter_name + "gx.txt").c_str()));
+    CImg<double> filtro_gy(get_filter_from_file<double>((filter_name + "gy.txt").c_str()));
+
+    CImg<T> retorno(base.get_convolve(filtro_gx).abs() + base.get_convolve(filtro_gy).abs());
+
+    return retorno;
+}
+
+/// Convierte cierto valor X de una imagen a Y
+template <typename T>
+CImg<T> replace_value_for(CImg<T> base, T referencia, T reemplazo = 0) {
+
+    for (unsigned int x = 0 ; x < base.width() ; x++) {
+        for (unsigned int y = 0 ; y < base.height() ; y++) {
+            if (base(x, y) == referencia) {
+                base(x, y) = reemplazo;
+            }
+        }
+    }
+
+    return base;
+}
 
 /// END NAMESPACE
 }
