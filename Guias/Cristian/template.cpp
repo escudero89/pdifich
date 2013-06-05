@@ -13,6 +13,9 @@
 #define PI 3.14159265359
 using namespace cimg_library;
 
+//g++ -o template template.cpp -O0 -lm -lpthread -lX11 -lfftw3
+
+
 /// SUBLIME TEXT
 
 int main (int argc, char* argv[]) {

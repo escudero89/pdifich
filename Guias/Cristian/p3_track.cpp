@@ -73,7 +73,7 @@ int main (int argc, char* argv[]) {
 
     srand(time(0));
 
-    const char* _filename = cimg_option("-i", "training_old/track/01.jpg", "Imagen");
+    const char* _filename = cimg_option("-i", "training/track/01.jpg", "Imagen");
     
     const double _umbral = cimg_option("-umbral", 200.0, "Umbral dps de PA");
     const double _hb = cimg_option("-hb", 2.0, "A para el filtro HB");

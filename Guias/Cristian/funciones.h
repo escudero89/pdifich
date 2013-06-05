@@ -82,6 +82,9 @@ CImg<bool> get_mask_from_RGB(
     T radio, 
     char tipo = 's');
 
+/// Similar al anterior, pero en un solo canal
+CImg<bool> get_mask_from_channel(CImg<T> base, T value, T radio)
+
 /// Guarda los valores de una imagen 2D en un archivo (lo deja como vector)
 void image_to_text(CImg<T> image, const char * filename);
 
@@ -523,8 +526,8 @@ CImgList<> get_filter(
     return (H, H.get_fill(0));
 }
 
-/// Le pasas una imagen, un centro y un radio de la esfera en el plano R, G, y B. 
- // Devuelve la mascara (el tipo me dice si es norma2 [s])
+/// Le pasas una imagen, un centro y un radio de la esfera en el plano R, G, y B (color slicing)
+ // Devuelve la mascara (el tipo me dice si es RGB o un solo canal)
 template<typename T>
 CImg<bool> get_mask_from_RGB(
     CImg<T> base, 
@@ -532,31 +535,44 @@ CImg<bool> get_mask_from_RGB(
     T centro_G, 
     T centro_B, 
     T radio, 
-    char tipo = 's') {
+    bool only_one_channel = false) {
 
     CImg<bool> mascara(base.width(), base.height(), 1, 1, 0);
 
     // Recorro cada pixel
     cimg_forXYZ(base, x, y, z) {
-        /// Lo calcula como una esfera
-        if (tipo == 's') {
+
+        T distancia;
+
+        /// Si no tiene un solo canal
+        if (!only_one_channel) {
             // Saco las distancias de cada pixel por canal (z_r - a_r)
-                T c_r = pow(base(x, y, z, 0) - centro_R, 2.0);
-                T c_g = pow(base(x, y, z, 1) - centro_G, 2.0);
-                T c_b = pow(base(x, y, z, 2) - centro_B, 2.0);
+            T c_r = pow(base(x, y, z, 0) - centro_R, 2.0);
+            T c_g = pow(base(x, y, z, 1) - centro_G, 2.0);
+            T c_b = pow(base(x, y, z, 2) - centro_B, 2.0);
 
-                // Mido la distancia a cada centro (pag 333)
-                T distancia = pow(c_r + c_g + c_b, 0.5);
+            // Mido la distancia a cada centro (pag 333)
+            distancia = pow(c_r + c_g + c_b, 0.5);
 
-            // Esto quiere decir que esta dentro de la esfera (la mascara es 1)
-            if (distancia < radio) {
-                mascara(x, y, z) = 1;
-            }
-
+        } else {
+            // Uso solo un canal para determinarlo (no es por radio)
+            distancia = base(x, y, z) - centro_R;
         }
+
+        // Esto quiere decir que esta dentro de la esfera (la mascara es 1)
+        if (distancia < radio) {
+            mascara(x, y, z) = 1;
+        }
+
     }
 
     return mascara;
+}
+
+/// Similar al anterior, pero en un solo canal
+template<typename T>
+CImg<bool> get_mask_from_channel(CImg<T> base, T value, T radio) {
+    return get_mask_from_RGB<T>(base, value, 0, 0, radio, true);
 }
 
 /// Guarda los valores de una imagen 2D en un archivo (lo deja como vector)
@@ -872,17 +888,26 @@ double coord_hough_to_value(CImg<T> hough, int coord, unsigned char axis) {
 template <typename T>
 CImg<T> slice_hough(
     CImg<T> Hough, 
-    double angulo, 
-    double row_hough,
+    double angulo = -180, 
+    double row_hough = -1,
     int ang_tol = 0, 
     int rho_tol = 0,
     bool just_max = false) {
 
+    // Si le pasamos -180 (por defecto), me devuelve toda la columna (sin importar ang_tol)
+    if (angulo == -180) {
+        angulo = 0;
+        ang_tol = Hough.width() / 2;
+    }
+
     // Obtenemos la columna (le sumo 90 para hacer el rango [0..180])
     double col_hough = (angulo + 90) / 180 * Hough.width(); 
 
-    // Y ahora la fila (las operaciones de adelante es para escalar entre 0 y 1)
-    //double row_hough = (coord_rho + sqrt(2)) * sqrt(2) / 4 * Hough.height();
+    // Si le paso row_hough -1 (por defecto), me trabaja toda la fila (sin importar rho_tol)
+    if (row_hough == -1) {
+        row_hough = Hough.height() / 2;
+        rho_tol = Hough.height() / 2;
+    }
 
     // Guardo el maximo pico
     double max_pico = 0;
@@ -891,8 +916,8 @@ CImg<T> slice_hough(
 
     CImg<double> auxiliar(Hough.width(), Hough.height(), 1, 1, 0);
 
-    for (int i = -rho_tol ; i <= rho_tol ; i++) {
-        for (int j = -ang_tol ; j <= ang_tol ; j++) {
+    for (int i = -ang_tol ; i <= ang_tol ; i++) {
+        for (int j = -rho_tol ; j <= rho_tol ; j++) {
             // Evitamos que se nos salga de los limites
             if (col_hough + i < Hough.width() && col_hough + i >= 0 &&
                 row_hough + j < Hough.height()&& row_hough + j >= 0) {
@@ -906,8 +931,11 @@ CImg<T> slice_hough(
                         max_pico = Hough(x_max_pico, y_max_pico);
                     }
                 } else {
-                    auxiliar(x_max_pico, y_max_pico) = Hough(x_max_pico, y_max_pico);
-                    std::cout << auxiliar(x_max_pico, y_max_pico) << "(" << x_max_pico << "," << y_max_pico << ")"<< std::endl;
+                    // si es menor o igual a 0, no tiene sentido guardarlo
+                    if (Hough(x_max_pico, y_max_pico) > 0) {
+                        auxiliar(x_max_pico, y_max_pico) = Hough(x_max_pico, y_max_pico);
+                        std::cout << auxiliar(x_max_pico, y_max_pico) << "(" << x_max_pico << "," << y_max_pico << ")"<< std::endl;
+                    }
                 }
             }
         }
@@ -921,7 +949,6 @@ CImg<T> slice_hough(
 
     return auxiliar;
 }
-
 
 /// END NAMESPACE
 }

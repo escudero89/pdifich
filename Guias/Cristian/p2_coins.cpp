@@ -171,7 +171,7 @@ int main (int argc, char* argv[]) {
 
     srand(time(0));
 
-    const char* _filename = cimg_option("-i", "training_old/coins/01.jpg", "Imagen");
+    const char* _filename = cimg_option("-i", "training/coins/01.jpg", "Imagen");
     
     const int _tolerancia = cimg_option("-tol", 50, "Tolerancia +-(0~100\%)");
    

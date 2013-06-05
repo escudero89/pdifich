@@ -105,8 +105,8 @@ int main (int argc, char* argv[]) {
 
     srand(time(0));
 
-    const char* _filename_r = cimg_option("-i", "training_old/beer/01.jpg", "Imagen");
-    const char* _filename_o = cimg_option("-i2", "training_old/beer/31.jpg", "Imagen");
+    const char* _filename_r = cimg_option("-i", "training/beer/01.jpg", "Imagen");
+    const char* _filename_o = cimg_option("-i2", "training/beer/31.jpg", "Imagen");
     
     const int _umbral = cimg_option("-umbral", 32, "Umbral del laplaciano");
 
