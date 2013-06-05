@@ -292,7 +292,7 @@ CImg<T> get_filter_from_file(const char * nombre) {
     }
 
     f.close();
-    salida.display("from_file", 0);
+    //salida.display("from_file", 0);
     return salida;
 }
 
@@ -950,5 +950,39 @@ CImg<T> slice_hough(
     return auxiliar;
 }
 
+/// Busco la posicion de maximia colinealidad en Hough, y retorno por referencia el valor de
+// tetha entre [-90, 90] y el valor en coord de posicion de rho [0, hough.height()]
+// tambien retorno la transformada Hough sin ese maximo pico
+template<typename T>
+CImg<T> get_max_peak(CImg<T> hough, T &theta, T &rho_coord, unsigned int difuminacion = 5) {
+
+    unsigned int max_x = 0;
+    unsigned int max_y = 0;
+
+    double max_val = hough.max();
+
+    bool go_loop = true;
+
+    for (unsigned int x = 0; x < hough.width() && go_loop; x++) {
+        for (unsigned int y = 0; y < hough.height() && go_loop; y++) {
+            if (fabs(hough(x, y) - max_val) < EPSILON) {
+                max_x = x;
+                max_y = y;
+                go_loop = false;
+            }
+        }
+    }
+
+    // Guardo los valores
+    theta = coord_hough_to_value<T>(hough, max_x, 't');
+    rho_coord = max_y;
+
+    //  Dibujo un circulo negro (0's) de radio difuminacion en hough
+    unsigned char color[] = {0};
+
+    hough.draw_circle(int(max_x), int(max_y), difuminacion, color);
+
+    return hough;
+}
 /// END NAMESPACE
 }
