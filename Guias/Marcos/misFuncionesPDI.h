@@ -3,9 +3,13 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <complex>
 //#include <CImg.h>
 using namespace std;
 using namespace cimg_library;
+
+#define EVITAR_PIXEL -123.321
+#define EPSILON 0.00001
 
 
 /// FILTRO DE MEDIA GEOMETRICA
@@ -200,6 +204,112 @@ CImg<T> filtrar_mediasAlfaRecortado(CImg<T> img, int alfa = 2, int tam_masc_x = 
 }
 
 
+/// FITRO PARA IMAGENES A COLOR (robado a cristian):
+// usar funcion: filtrar_color_impulsivo(...);
+double get_R_from_window_helper(CImg<double> S, CImg<double> &R, unsigned int &i_min, unsigned int &j_min) {
+    // Saco la distancia promedio, y voy a determinar para mi menor aquellos pixeles
+    // que sean menores o iguales a esta distancia
+    double promedio = 0;
+    double R_min = 1/EPSILON;
+
+    // En cada cuadrado de R
+    cimg_forXY(R, x, y) {
+        // Cuando tengo EVITAR_PIXEL, no utilizo ese cuadrante
+        if (S(x, y, 0) != EVITAR_PIXEL) {
+            R(x, y) = 0;
+
+            // No aplico raiz cuadrada, si total es para comparar
+            cimg_forXYC(S, s, t, c) {
+                // Si S(s, t, c) = EVITAR_PIXEL, no lo contabilizo
+                if (S(s, t, c) != EVITAR_PIXEL) {
+                    R(x, y) += pow(S(s, t, c) - S(x, y, c), 2);
+                }
+            }
+
+            promedio += R(x, y);
+
+            // Voy guardando el indice del elemento de menor valor
+            if (R(x, y) < R_min) {
+                i_min = x;
+                j_min = y;
+                R_min = R(x, y);
+            }
+
+        } else {
+            R(x, y) = EVITAR_PIXEL;
+        }
+    }
+
+    return promedio /= (R.width() * R.height());
+}
+
+/// A partir de una ventana, me construye la distancia acumulada en ella usando distancia euclideana
+// Para evitar que los pixeles impulsivos me muevan el "pixel central elegido", elimino los que
+// esten a mayor distancia
+CImg<double> get_R_from_window(CImg<double> S, unsigned int &i_min, unsigned int &j_min) {
+
+    CImg<double> R(S.width(), S.height());
+
+    double promedio;
+
+    // Obtengo R y S
+    promedio = get_R_from_window_helper(S, R, i_min, j_min);
+
+    // Recorro otra vez, pero esta vez buscando el minimo y salteando el resto
+    cimg_forXY(R, x, y) {
+        if (R(x, y) > promedio) {
+            cimg_forC(S, c) {
+                S(x, y, c) = EVITAR_PIXEL;
+            }
+        }
+    }
+
+    // Vuelvo a llamar a la funcion para obtener una nueva ventana
+    get_R_from_window_helper(S, R, i_min, j_min);
+
+    return R;
+
+}
+
+/// Aplica un filtro basado en un ordenamiento usando distancias acumuladas
+// Trabaja con una vencidad S de mxn
+CImg<double> filtrar_color_impulsivo(CImg<double> base, unsigned int m = 3, unsigned int n = 3) {
+
+    CImg<double> R;
+    CImg<double> S;
+
+    // Para determinar el tamanho de las ventanas
+    int step_x = m / 2;
+    int step_y = n / 2;
+
+    // Recorro la base y voy tomando ventanas
+    cimg_forXY(base, x, y) {
+
+        // Esto es para evitar que se me vaya del rango
+        int x0 = (x - step_x < 0) ? 0 : x - step_x;
+        int y0 = (y - step_y < 0) ? 0 : y - step_y;
+        int x1 = (x + step_x >= base.width()) ? base.width() - 1 : x + step_x;
+        int y1 = (y + step_y >= base.height()) ? base.height() - 1 : y + step_y;
+
+        // Obtengo la ventana S (con todos sus espectros)
+        S = base.get_crop(x0, y0, x1, y1);
+
+        // Obtengo la ventana R de distancias acumuladas
+        unsigned int i_min = 0;
+        unsigned int j_min = 0;
+
+        R = get_R_from_window(S, i_min, j_min);
+
+        // Le asigno el menor valor a f(x, y)
+        cimg_forC(base, c) {
+            base(x, y, c) = S(i_min, j_min, c);
+        }
+
+    }
+
+    return base;
+
+}
 
 
 
@@ -383,3 +493,377 @@ CImg<double> filtrar_frecuencia(CImg<double> img, CImg<double> filtro, bool most
 
     return img_filtrada;
 }
+
+
+///**************************************************************************///
+///***************************DETECTORES DE BORDES **************************///
+///**************************************************************************///
+
+
+/// DETECTAR BORDES CON DERIVADAS
+// RECIBE:
+//  img:  imagen con bordes a detectar
+
+//  tipo: tipo de mascara a usar
+//        strings validos: | roberts| prewitt | sobel | laplaciano | LoG |
+
+//  orientacion: si es un metodo de gradiente se puede elegir entre Gx Gy o magnitud
+//               string validos: | Gx: gradiente en X | Gy: gradiente en Y |magnitud: Magnitud|
+//               No usar magnitud si usas laplaciano o LoG
+
+//  umbral: umbral para la binarizacion, si es -1 lo hace automaticamente
+
+//  binarizar: si es true devuelve la imagen binaria, si es false no.
+//
+//DEVUELVE
+//   imagen filtrada: binaria si binarizacion es true, o en double si binarizacion es false
+CImg<double> bordes(CImg<double> img, string tipo = "prewitt",string orientacion = "magnitud", double umbral = -1, bool binarizar = true){
+
+    CImg<int> mascara(2,2,1,1);
+    CImg<double> resultado(img.width(),img.height(),1,1);
+
+
+    if(tipo == "roberts"){
+        if(orientacion == "Gx"){
+            CImg<int> mascara_x(2, 2, 1, 1, -1,0,0,1);
+            mascara = mascara_x;
+        }
+
+        if(orientacion == "Gy"){
+            CImg<int> mascara_y(2, 2, 1, 1,  0,-1,1,0);
+            mascara = mascara_y;
+        }
+
+    }else if(tipo == "prewitt"){
+
+        if(orientacion == "Gx"){
+            CImg<int> mascara_x(3, 3, 1, 1, -1,-1,-1,
+                                             0, 0, 0,
+                                             1, 1, 1);
+            mascara = mascara_x;
+        }
+
+        if(orientacion == "Gy"){
+            CImg<int> mascara_y(3, 3, 1, 1,  -1, 0, 1,
+                                             -1, 0, 1,
+                                             -1, 0, 1);
+            mascara = mascara_y;
+        }
+
+    }else if(tipo == "sobel"){
+
+        if(orientacion == "Gx"){
+            CImg<int> mascara_x(3, 3, 1, 1, -1,-2,-1,
+                                             0, 0, 0,
+                                             1, 2, 1);
+            mascara = mascara_x;
+        }
+
+        if(orientacion == "Gy"){
+            CImg<int> mascara_y(3, 3, 1, 1,  -1, 0, 1,
+                                             -2, 0, 2,
+                                             -1, 0, 1);
+            mascara = mascara_y;
+        }
+
+    } else if(tipo == "laplaciano"){
+
+        if(orientacion == "Gx"){
+            CImg<int> mascara_x(3, 3, 1, 1, -1,-1,-1,
+                                            -1, 8,-1,
+                                            -1,-1,-1);
+            mascara = mascara_x;
+        }
+
+        if(orientacion == "Gy"){
+            CImg<int> mascara_y(3, 3, 1, 1,   0, -1, 0,
+                                             -1,  4, -1,
+                                              0, -1, 0);
+            mascara = mascara_y;
+        }
+
+    } else if(tipo == "LoG"){
+
+        if(orientacion == "Gx"){
+            CImg<int> mascara_x(5, 5, 1, 1,  0, 0,-1, 0, 0,
+                                             0,-1,-2,-1, 0,
+                                            -1,-2,16,-2,-1,
+                                             0,-1,-2,-1, 0,
+                                             0, 0,-1, 0, 0);
+            mascara = mascara_x;
+        }
+
+        if(orientacion == "Gy"){
+            CImg<int> mascara_y(3, 3, 1, 1,   0, -1, 0,
+                                             -1,  4, -1,
+                                              0, -1, 0);
+            mascara = mascara_y;
+        }
+
+    }else{
+        cout<<"TIPO DE DETECTOR DE BORDE INVALIDO, ESCRIBI BIEN EL NOMBRE!"<<endl;
+        getchar();
+    }
+
+
+    if(orientacion == "magnitud"){
+        CImg<double> Gx (bordes(img, tipo, "Gx", umbral, false));
+        CImg<double> Gy (bordes(img, tipo, "Gy", umbral, false));
+
+        cimg_forXY(img,i,j){
+            //Calculamos la magnitud del gradiente
+            resultado(i,j) = sqrt( pow(Gx(i,j), 2) + pow(Gy(i,j), 2) );
+        }
+
+    }else{
+        //Convolucionamos
+        resultado = img.get_convolve(mascara);
+        resultado.normalize(0,1);
+    }
+
+    //Si pedimos binarizar aplicamos umbrales
+    if(binarizar == true){
+
+        //Si el umbral es -1 usamos como umbral la media.
+        if(umbral == -1){
+            //Calculamos umbral
+            double media = 0;
+            double desvio = sqrt(resultado.variance_mean(0, media));
+            umbral = media + 1.5 * desvio;
+        }
+
+        //Umbralizamos
+        cimg_forXY(resultado,i,j){
+            resultado(i,j) = resultado(i,j) > umbral ? 1 : 0;
+        }
+    }
+
+    return resultado;
+
+}
+
+
+/// TRANSFORMADA DE HOUGH CON ESPECIFICACION DE THETA Y RHO
+
+CImg<double> my_hough(CImg<double> img, bool inverse=false,
+                      double theta_deseado = 0, double rho_deseado = 0,
+                      double tolerancia_theta = INFINITY, double tolerancia_rho = INFINITY ) {
+
+  CImg<double> iHough(img); iHough.fill(0.0);
+  const unsigned M = img.width(),
+                 N = img.height();
+
+  double max_rho = sqrt(float(pow(N-1,2)+pow(M-1,2))), //maximo valor posible de radio se da en la diagonal pcipal
+         step_rho = 2.*max_rho/(N-1), //paso en eje rho (rho=[-max_rho , max_rho])
+         step_theta = M_PI/(M-1),     //paso en eje theta (M_PI=pi) (theta=[-90,90])
+         rho, theta;
+
+  if (!inverse){
+        int r;  // radio mapeado en los N pixeles
+        cimg_forXY(img,y,x){
+
+        if (img(y,x) > 0.5){
+
+            for (int t=0; t<M; t++) { //calculo rho variando theta en todo el eje, con x e y fijo
+              theta=t*step_theta-M_PI/2;  // mapea t en [0,M-1] a t en [-90,90]
+              rho=x*cos(theta)+y*sin(theta); // calcula rho para cada theta
+              r=floor((rho+max_rho)/step_rho+.5); // mapea r en [-max_rho , max_rho] a r en [0,N-1] el floor(r+.5) sirve para redondear
+
+              if((abs(theta - theta_deseado) < tolerancia_theta) and (abs(rho - rho_deseado) < tolerancia_rho)){
+
+                iHough(t,r)+= 1; // suma el acumulador
+
+              }
+
+            }
+        }
+    }
+  }else{
+    const double blanco[1] = {255.f};
+    float x0, x1, y0, y1;
+    cimg_forXY(img,t,r){
+      if (img(t,r) > 0.5) {
+        theta=t*step_theta-M_PI/2;   // mapea t en [0,M-1] a t en [-90,90]
+        rho=r*step_rho-max_rho;      // mapea r en [0,N-1] a r en [-max_rho,max_rho]
+        if (theta>-M_PI/2 && theta<M_PI/2){
+	  y0=0; y1=M-1;
+          x0=rho/cos(theta);      // calcula y para y=0
+          x1=rho/cos(theta)-(M-1)*tan(theta); // calcula y para y=M-1
+	}else{
+	  x0=0; x1=N-1;
+          y0=rho/sin(theta);      // calcula y para x=0
+          y1=rho/sin(theta)-(N-1)/tan(theta); // calcula y para x=M-1
+	}
+	//cout<<endl<<"("<<t<<","<<r<<")->("<<theta<<","<<rho<<") "<<"("<<y0<<","<<x0<<")->("<<y1<<","<<x1<<")"<<endl;
+        iHough.draw_line(y0,x0,y1,x1,blanco); // dibuja una línea de (0,y0) a (M-1,y1)
+      }
+    }
+  }
+  return iHough;
+}
+
+
+/// FUNCION QUE DEVUELVE IMAGEN BINARIA CON SUS N MAXIMOS
+//RECIBE:
+//  cord_x: cordenada x
+//  cord_y: cordenada y
+//  puntos: Imagen con coordenadas de los puntos para calcular distancias
+//DEVUELVE:
+//  imagen con distancia de MANHANTAN de cada punto de la imagen puntos
+//  al punto definido por las coordenadas x e y
+//
+//NOTA: Solo para ser usada por funcion n_maximos definida abajo
+int distancia_minima(int cord_x, int cord_y, CImg<int> puntos){
+
+    CImg<int> distancias(puntos.width(),1,1,1,0);
+
+    cimg_forX(distancias, i){
+
+        distancias(i) = abs(cord_x - puntos(i,0)) + abs(cord_y - puntos(i,1));
+
+    }
+
+    return distancias.min();
+
+}
+
+/// FUNCION QUE DEVUELVE IMAGEN BINARIA CON SUS N MAXIMOS
+//RECIBE:
+//  img: Imagen a computar maximos
+//  n:   Cantidad de maximos a encontrar
+//  separacion: Distancia de manhattan entre maximos
+//DEVUELVE:
+//  imagen binaria todos ceros y 1's en los maximos
+//
+//NOTA: utiliza funcion distancia_minima definida arriba
+template<typename T>
+CImg<T> n_maximos(CImg<T> img , int n, int separacion){
+
+    int contador = 0;
+    int maximo_k = 1;
+    T max;
+    img = img * (-1);
+    CImg<T> maximos(img.width(), img.height(),1,1,0);
+    CImg<T> detectados(n,2,1,1,0);
+
+    while(contador < n){
+        max = img.kth_smallest(maximo_k);
+        maximo_k++;
+
+        cimg_forXY(img,i,j){
+
+            if ( (img(i,j) == max) and (contador < n) and (distancia_minima(i,j, detectados) > separacion)) {
+
+                maximos(i,j) =  1;
+
+                //Guardamos las coordenadas de los puntos ya detectados
+                detectados(contador, 0) = i;
+                detectados(contador, 1) = j;
+
+                //Aumentamos el contador de maximos detectados
+                contador ++;
+            }
+
+        }
+
+    }
+
+    return maximos;
+}
+
+
+/// SEGMENTADO DE COLOR
+//RECIBE:
+//  img: Imagen RGB a segmentar
+//  r g b : valores del color buscado
+//  delta: rango permitido de colores
+//DEVUELVE:
+//  imagen binaria de segmentacion
+//
+CImg<double> color_slicing(CImg<double> img, double r, double g, double b, double delta){
+    CImg<double> mascara(img.width(), img.height(), 1, 1);
+
+    img.normalize(0,1);
+
+    cimg_forXY(img,x,y){
+
+        double distancia = pow( pow((img(x,y,0) - r), 2.0) +
+                                pow((img(x,y,1) - g), 2.0) +
+                                pow((img(x,y,2) - b), 2.0), (1.0/3));
+
+
+//        cout<<"img R: "<<img(x,y,0)<<endl;
+//        cout<<"img G: "<<img(x,y,0)<<endl;
+//        cout<<"img B: "<<img(x,y,0)<<endl;
+//
+//        cout<<"Diferencia al cuadrado de r "<<pow((img(x,y,0) - r), 2.0)<<endl;
+//        cout<<"Diferencia al cuadrado de g "<<pow((img(x,y,1) - g), 2.0)<<endl;
+//        cout<<"Diferencia al cuadrado de b "<<pow((img(x,y,2) - b), 2.0)<<endl;
+//
+//        cout<<"Distancia: "<<distancia<<endl;
+
+        mascara(x,y) = (distancia < delta) ? 1 : 0;
+
+    }
+
+    return mascara;
+
+}
+
+
+/// UNIQUE PARA IMAGENES
+//RECIBE:
+//  img: Imagen
+//DEVUELVE:
+//  Vector con los valores de la imagen no repetidos
+//NOTA: Usada para contar dsps de componente_conectada
+template<typename T>
+vector<T> unique_element_image(CImg<T> img){
+    vector<int> V;
+    cimg_forXY(img, x,y){
+        if( V.end() == find(V.begin(), V.end(), img(x,y)) ){
+            V.push_back(img(x,y));
+        }
+    }
+
+    return V;
+}
+
+/// DIBUJAR CIRCULOS CENTRALES EN IMAGENES SEGMENTADAS
+//RECIBE:
+//  img_seg:        Imagen segmentada binaria
+//  img_original:   Imagen original
+//  m n:            tamanio de mascara
+//  cant_circulos:  cantidad de circulos a dibujar
+//  sep:            separacion minima entre circulos
+//DEVUELVE:
+//  Vector con los valores de la imagen no repetidos
+//NOTA: Usada para contar dsps de componente_conectada
+template<typename T>
+CImg<T> dibujar_circulos_centrales(CImg<bool> img_seg, CImg<T> img_original,
+                                   int tam_m, int tam_n, int cant_circulos, int sep){
+
+    const unsigned char color[] = { 0,255,0 };
+    CImg<bool> mascara(tam_m, tam_n, 1, 1);
+
+    //Convolucionamos
+    CImg<int> valores(img_seg.get_convolve(mascara));
+    valores.display("Convolucionado");
+
+    //Obtenemos N centros
+    valores = n_maximos(valores, cant_circulos, sep);
+    valores.display("N maximos");
+
+    //Dibujamos circulos
+    cimg_forXY(valores, x, y){
+        if( valores(x,y) ){
+            img_original.draw_circle(x,y,(tam_m + tam_n)/2, color, 1, 4);
+        }
+    }
+
+    img_original.display();
+
+    return img_original;
+}
+
+
