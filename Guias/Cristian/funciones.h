@@ -88,11 +88,72 @@ CImg<bool> get_mask_from_channel(CImg<T> base, T value, T radio)
 /// Guarda los valores de una imagen 2D en un archivo (lo deja como vector)
 void image_to_text(CImg<T> image, const char * filename);
 
+// Le pasas una imagen, retorna la imagen recortada segun el valor buscado, y las cuatro coord
+// que me indican desde donde fue el corte
+CImg<T> get_sliced_object(
+    CImg<T> base, 
+    T valor_buscado, 
+    unsigned int &x_min, 
+    unsigned int &y_min, 
+    unsigned int &x_max, 
+    unsigned int &y_max);
+
+/// Aplico un filtro de gradiente (r: roberts, p: prewitt, s: sobel) a una imagen que le paso
+CImg<T> apply_gradient(CImg<T> base, unsigned char tipo = 's');
+
+/// Convierte cierto valor X de una imagen a Y
+CImg<T> replace_value_for(CImg<T> base, T referencia, T reemplazo = 0);
+
+///#################################################################################///
+
+/// Aplico la media contra-armonica a una ventana que me pasan con orden Q,
+// y retorno el valor del punto x,y
+double apply_contraharmonic_mean(CImg<double> ventana, double Q);
+
+/// Filtros de ordenamiento: mediana
+double apply_median(CImg<double> ventana);
+
+/// Filtro del punto medio
+double apply_midpoint(CImg<double> ventana);
+
+/// Filtro de media-alfa recortado (el d es la mitad de la formula 5.3-11 p246)
+double apply_alpha_trimmed_mean(CImg<double> ventana, unsigned int d = 2);
+
+/// Aplico el filtro de la media geometrica a una imagen base, usando una ventana S de MxN
+// Tipo_filtro : g [Geometrica], c [Contra-armonica], m [mediana], p [midpoint], a [alpha-trimmed]
+// el factor es el orden en el contraarmonica, y el d en el alfa recortado
+CImg<double> apply_mean(
+    CImg<double> base,
+    unsigned char tipo_filtro = 'g',
+    double factor = 0,
+    int m = 3,
+    int n = 3);
+
+///#################################################################################///
+
+/// En base a la coordenada y al eje, me retorna el valor que correspende la transformada Hough
+// en grados para theta (t) entre [-90 ; 90] y entre [-sqrt(2)M;sqrt(2)M] el rho (p)
+double coord_hough_to_value(CImg<T> hough, int coord, unsigned char axis);
+
+/// Le mandamos una transformada de Hough, y recorta solo en el angulo y rho que le pedimos
+// El angulo se lo pasas en grados [-90..90], y el coord_rho en posicion en pixeles en hough
+// La tolerancia se mide en celdas acumuladoras de separacion (no en %).
+// El just_max me indica si saca todos los puntos en el area, o solo el maximo.
+CImg<T> slice_hough(
+    CImg<T> Hough, 
+    double angulo = -180, 
+    double row_hough = -1,
+    int ang_tol = 0, 
+    int rho_tol = 0,
+    bool just_max = false);
+
+/// Busco la posicion de maximia colinealidad en Hough, y retorno por referencia el valor de
+// tetha entre [-90, 90] y el valor en coord de posicion de rho [0, hough.height()]
+// tambien retorno la transformada Hough sin ese maximo pico
+CImg<T> get_max_peak(CImg<T> hough, T &theta, T &rho_coord, unsigned int difuminacion = 5);
 
 */
 //************************************************************************************************//
-
-
 
 /// Utilizo un propio namespace asi no conflictuo con otras funciones
 namespace cimg_ce {
@@ -984,5 +1045,6 @@ CImg<T> get_max_peak(CImg<T> hough, T &theta, T &rho_coord, unsigned int difumin
 
     return hough;
 }
+
 /// END NAMESPACE
 }

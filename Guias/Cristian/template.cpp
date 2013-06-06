@@ -31,11 +31,11 @@ int main (int argc, char* argv[]) {
 
     const char* _filename = cimg_option("-i", "training/???", "Imagen");
     
-    const unsigned int _a = cimg_option("-a", "training/???", "Parametro a");
+    const unsigned int _a = cimg_option("-a", 0, "Parametro a");
     
-    const int _b = cimg_option("-b", "training/???", "Parametro b");
+    const int _b = cimg_option("-b", 0, "Parametro b");
     
-    const double _c = cimg_option("-c", "training/???", "Parametro c");
+    const double _c = cimg_option("-c", 0.0, "Parametro c");
 
 
     funcion(_filename, _a, _b, _c);
