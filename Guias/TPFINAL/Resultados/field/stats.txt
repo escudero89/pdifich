@@ -1,7 +1,0 @@
-Nombre del archivo base: field.txt
-Psi: -1
-Frecuencia de corte: 150
-Gl: 1
-Gh: 0
-C: 1
-Pendiente saturacion: 1
