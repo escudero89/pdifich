@@ -224,61 +224,59 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 
 ///FUNCION SEGMENTAR:
 ///     INPUT:
-///         img1: Imagen de entrada 1 (canal de INTENSIDAD)
-///         img2: Imagen de entrada 2 (canal de INTENSIDAD)
+///         img1: Imagen de entrada 1 (Formato RGB)
+///         img2: Imagen de entrada 2 (Formato RGB)
 ///         tam_suavizado: tamanio de mascara utilizado para suavizar la diferencia de imagenes
 ///         umbral_segmentacion: umbral que define que parte pasa y que parte no en la segmentacion
 
 ///     OUTPUT:
 ///         Mascara booleana con la imagen segmentada
 CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
-                      unsigned int tam_suavizado = 15,
-                      double umbral_segmentacion=0.2){
+                      unsigned int tam_suavizado = 7,
+                      double umbral_segmentacion=0.3){
+
+ //Suavizamos la imagen para hacer la segmentacion menos sensible
+ // a detalles
+     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 3, 1);
+     img1.convolve(filtro_suavizado);
+     img2.convolve(filtro_suavizado);
 
  //Creamos una imagen con el valor absoluto de la diferencia de
  //las dos imagenes de entrada.
      CImg<double> diferencia(abs(img1 - img2));
 
- //Suavizamos la imagen para quitar imperfecciones y dejar los valores
- //de la resta mas uniformes
-     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 1, 1);
+ //Suavizamos nuevamente para eliminar pequenios puntos
      diferencia.convolve(filtro_suavizado).normalize(0,1);
 
  //Aplicamos umbralizacion
      CImg<bool> mascara(img1.width(), img1.height(), 1, 1);
      cimg_forXY(mascara, x, y){
-          //(media - desvio * umbral_segmentacion)
-         mascara(x,y) = (diferencia(x,y) > umbral_segmentacion) ? 1 : 0;
-     }
 
-//      SEGUNDO SUAVIZADO, OPCIONAL
-//        (mascara, mascara.convolve(filtro_suavizado)
-//                               .normalize(0,1))
-//                               .display("Diferencia | Diferencia suavizada");
-//        desvio = sqrt(diferencia.variance_mean(0, media));
-//        cimg_forXY(mascara, x, y){
-//             //(media - desvio * umbral_segmentacion)
-//            mascara(x,y) = (mascara(x,y) > media + desvio * umbral_segmentacion) ? true : false;
-//        }
-//
-//        (diferencia, mascara).display();
+         mascara(x,y) = (sqrt(
+                         pow(diferencia(x,y,0),2)+
+                         pow(diferencia(x,y,1),2)+
+                         pow(diferencia(x,y,2),2)) > umbral_segmentacion) ? 1 : 0;
+     }
 
      return mascara;
 
 }
 
 
+
 ///Funcion principal que hace todo
 void nighttimeEnhacement(
     const char* images_file,
     double psi,
-    int option_fc,
+    double option_fc,
     double option_gl,
     double option_gh,
     double option_c,
     double pendiente_saturacion,
     unsigned int tamanho_prom_hue,
-    double option_fs) {
+    double option_fs,
+    double option_useg,
+    int option_pseg) {
 
     string nombreFile = string(images_file).substr(0, string(images_file).find(".txt"));
 
@@ -320,6 +318,8 @@ void nighttimeEnhacement(
                                        nighttime_bg.get_channel(2),
                                        option_fc, option_gl, option_gh, option_c));
 
+    //Nesecito que este en RGB para segmentar
+    nighttime_bg.HSItoRGB();
 
     unsigned int contador = 1;
 
@@ -336,6 +336,39 @@ void nighttimeEnhacement(
         CImg<double> image((carpetaInResultado + image_file).c_str());
         CImg<double> original(image);
 
+        //SEGMENTAMOS | ENVIAR IMAGENES EN FORMATO RGB
+        //Si C = 0 NO segmentamos, si es distinto de 0 SI segmentamos
+
+        CImg<bool> mascara_seg(image.width(),image.height(),1,1);
+
+        if(option_c == 0){
+          mascara_seg.fill(0);
+        }else{
+          mascara_seg = (segmentar(image, nighttime_bg, option_pseg, option_useg));
+        }
+
+        CImg<double> LoG(5, 5, 1, 1, 0);
+
+        LoG(0, 2) = -1;
+
+        LoG(1, 1) = -1;
+        LoG(1, 2) = -2;
+        LoG(1, 3) = -1;
+
+        LoG(2, 0) = -1;
+        LoG(2, 1) = -2;
+        LoG(2, 2) = 16;
+        LoG(2, 3) = -2;
+        LoG(2, 4) = -1;
+
+        LoG(3, 1) = -1;
+        LoG(3, 2) = -2;
+        LoG(3, 3) = -1;
+
+        LoG(4, 2) = -1;
+
+        CImg<bool> mascara_LoG(mascara_seg.get_convolve(LoG).get_threshold(0.5));
+
         // TRABAJAMOS CON LA IMAGEN
         image.RGBtoHSI();
         image = correccionPsi(image, psi);
@@ -350,25 +383,39 @@ void nighttimeEnhacement(
                                            ratio,
                                            option_fc, option_gl, option_gh, option_c ));
 
-        CImg<bool> mascara_seg(segmentar(intensity_night,
-                                         nighttime_bg.get_channel(2)));
+
         cimg_forXY(mascara_seg, x, y){
+
+            if (mascara_LoG(x, y) == 1) {
+                intensidad(x, y) = 1;
+                saturation(x, y) = 0;
+                hue(x, y) = 120;
+
+            } else {
 
             /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
             if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
-                intensidad(x, y) = intensity_night(x, y);
+                intensidad(x, y) = intensity_night(x, y) * option_c +
+                                    intensidad(x,y) * (1.0 - option_c);
+                if(option_c != 1){
+                    saturation(x,y) = saturation(x,y) * 0.2;//option_fs;
+                }
 
             } else { // background estatico
-                hue(x, y) = daytime_bg_hue(x, y);
+                hue(x, y) = daytime_bg_hue(x, y) * option_fc + hue(x,y) * (1.0 - option_fc);
 
-                double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
-
-                // Nos quedamos con la menor saturacion (no inventamos saturacion)
-                saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
-
+                //%% Si c = 0 como el paper
+                if(option_c != 0){
+                    double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
+                    // Nos quedamos con la menor saturacion (no inventamos saturacion)
+                    saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+                }else{
+                    saturation(x,y) = saturation(x,y) * option_fs;
+                }
                 // No hay cambios en la intensidad
             }
 
+            }
             /*
             hue(x, y) = daytime_bg_hue(x, y) * (1 - mascara_seg(x, y)) + hue(x,y) * mascara_seg(x,y);
 
@@ -442,7 +489,7 @@ int main(int argc, char *argv[]){
 
     const double _fs = cimg_option("-fs", 0.9, "Factor de Saturacion en la pendiente");
 
-    const int _fc = cimg_option("-fc", 150, "Frecuencia de Corte");
+    const double _fc = cimg_option("-fc", 150.0, "Frecuencia de Corte");
     const double _gl = cimg_option("-gl", 0.6, "Gamma Low");
     const double _gh = cimg_option("-gh", 25.0, "Gamma High");
     const double _c = cimg_option("-c", 1.0, "Offset");
@@ -450,7 +497,11 @@ int main(int argc, char *argv[]){
 
     const unsigned int _tam_hue = cimg_option("-tph", 15, "Tamanho de matriz Promedio en Hue");
 
-    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue, _fs);
+    const double _umbralSegmentacion = cimg_option("-useg", 0.25, "Umbral de segmentacion");
+    const int _promediadoSegmentacion = cimg_option("-pseg", 7, "Tamanio del filtro para suavizar en segmentacion");
+
+    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue, _fs,
+                        _umbralSegmentacion, _promediadoSegmentacion);
 
     return 0;
 }
