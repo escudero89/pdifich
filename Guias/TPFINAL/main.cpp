@@ -275,6 +275,7 @@ void nighttimeEnhacement(
     double pendiente_saturacion,
     unsigned int tamanho_prom_hue,
     double option_fs,
+    double option_fss,
     double option_useg,
     int option_pseg) {
 
@@ -398,7 +399,7 @@ void nighttimeEnhacement(
                 intensidad(x, y) = intensity_night(x, y) * option_c +
                                     intensidad(x,y) * (1.0 - option_c);
                 if(option_c != 1){
-                    saturation(x,y) = saturation(x,y) * 0.2;//option_fs;
+                    saturation(x,y) = saturation(x,y) * option_fss;
                 }
 
             } else { // background estatico
@@ -487,21 +488,56 @@ int main(int argc, char *argv[]){
     const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
     const double _psi = cimg_option("-psi", -1.0, "Factor de correccion psi");
 
-    const double _fs = cimg_option("-fs", 0.9, "Factor de Saturacion en la pendiente");
 
-    const double _fc = cimg_option("-fc", 150.0, "Frecuencia de Corte");
+    const double _fs = cimg_option("-fs", 0.15, "Factor que maneja la saturacion del fondo de la imagen");
+    const double _fss = cimg_option("-fss", 0.2, "Factor que maneja la saturacion de la parte segmentada de la imagen");
+    const double _c = cimg_option("-c", 0.0, "Factor que maneja la intensidad de la parte segmentada");
+    const double _fc = cimg_option("-fc", 0.0, "Factor que maneja el tono del fondo de la imagen");
+
+
     const double _gl = cimg_option("-gl", 0.6, "Gamma Low");
     const double _gh = cimg_option("-gh", 25.0, "Gamma High");
-    const double _c = cimg_option("-c", 1.0, "Offset");
     const double _ps = cimg_option("-ps", 1.0, "Pendiente transf. lineal a saturacion");
-
     const unsigned int _tam_hue = cimg_option("-tph", 15, "Tamanho de matriz Promedio en Hue");
 
     const double _umbralSegmentacion = cimg_option("-useg", 0.25, "Umbral de segmentacion");
     const int _promediadoSegmentacion = cimg_option("-pseg", 7, "Tamanio del filtro para suavizar en segmentacion");
 
-    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue, _fs,
+    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue, _fs,_fss,
                         _umbralSegmentacion, _promediadoSegmentacion);
+
+
+
+
+///  Para ejecutarlo exactamente segun el paper:
+//    -c 0     (indica que usamos la intensidad de la imagen denightiada)
+//    -fc 0    (indica que usamos el tono de la imagen denightiada)
+//    -fs 0.15 (factor que reduce la saturacion)
+
+///   Para ejecutarlo con nuestras modificaciones (segmentacion y color de dia):
+//    -c 1    (indica que usamos la intensidad de la imagen original en la parte segmentada)
+//    -fc 1   (indica que usamos el tono de la imagen de dia en las partes fijas)
+//    -fs 0   (factor que maneja la saturacion de las partes fijas (fondo) )
+//    -fss 0.2(factor que reduce la saturacion de la parte segmentada)
+
+
+///    Para ejecutarlo interpolando los dos casos anteriores:
+//    -c 0.3   (indica que usamos un promedio ponderado para la intensidad de la parte segmentada)
+//    -fc 1    (indica que usamos un promedio entre img denightiada e img de dia| es mejor ponerlo a 1 y usar el de dia)
+//    -fs 0.15 (factor que reduce la saturacion de la imagen del fondo)
+//    -fss 0.2 (factor que reduce la saturacion de la parte segmentada)
+
+
+
+
+
+
+
+
+
+
+
+
 
     return 0;
 }
