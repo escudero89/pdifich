@@ -18,3 +18,5 @@ avconv -f image2 -i %05d.jpg output.mp4
 Pegar un video al lado del otro:
 ffmpeg -i night.mp4 -vf "[in] pad=2*iw:ih [left]; movie=denight.mp4 [right]; [left][right] overlay=main_w/2:0 [out]" -b:v 3000k output.mp4
 
+Cargar todas las imágenes por cimg y crear video (nombre sin .txt):
+./images_to_video.sh nombre

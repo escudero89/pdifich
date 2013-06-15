@@ -176,7 +176,8 @@ void nighttimeEnhacement(
     double option_fs,
     double option_fss,
     double option_useg,
-    int option_pseg) {
+    int option_pseg,
+    bool aplicar_laplaciano) {
 
     string nombreFile = string(images_file).substr(0, string(images_file).find(".txt"));
 
@@ -270,7 +271,7 @@ void nighttimeEnhacement(
 
         cimg_forXY(mascara_seg, x, y){
 
-            if (mascara_LoG(x, y) == 1) {
+            if (mascara_LoG(x, y) == 1 && aplicar_laplaciano) {
                 hue(x, y) = 120;
                 saturation(x, y) = 0;
                 intensidad(x, y) = 1;
@@ -360,6 +361,8 @@ int main(int argc, char *argv[]){
     const double _alfaint = cimg_option("-alfaint", 0.0, "Factor que maneja la intensidad de la parte segmentada");
     const double _alfahue = cimg_option("-alfahue", 0.0, "Factor que maneja el tono del fondo de la imagen");
 
+    const bool _aplicar_laplaciano = cimg_option("-LoG", false, "Aplica o no el laplaciano");
+
     nighttimeEnhacement(
         _images_filename,
         _psi,
@@ -372,7 +375,8 @@ int main(int argc, char *argv[]){
         _fs,
         _fss,
         _umbralSegmentacion,
-        _promediadoSegmentacion);
+        _promediadoSegmentacion,
+        _aplicar_laplaciano);
 
 ///  Para ejecutarlo exactamente segun el paper:
 //    -alfaint 0     (indica que usamos la intensidad de la imagen denightiada)
