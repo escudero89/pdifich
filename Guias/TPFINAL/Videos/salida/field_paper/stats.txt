@@ -1,0 +1,9 @@
+Nombre del archivo base: field.txt
+Psi: -1
+Gl: 1
+Gh: 25
+Valor alfa de Intensidad: 0
+Valor alfa de Hue: 0
+Pendiente saturacion: 1
+Option_FS: 0.15
+Option_FSS: 0.2
