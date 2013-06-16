@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:osb="http://www.openswatchbook.org/uri/2009/osb"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="210mm"
+   height="297mm"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.3.1 r9886"
+   sodipodi:docname="dibujo.svg">
+  <defs
+     id="defs4">
+    <linearGradient
+       id="linearGradient5672"
+       osb:paint="solid">
+      <stop
+         style="stop-color:#000000;stop-opacity:1;"
+         offset="0"
+         id="stop5674" />
+    </linearGradient>
+  </defs>
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="445.79343"
+     inkscape:cy="712.15241"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     showguides="true"
+     inkscape:guide-bbox="true"
+     inkscape:snap-global="true"
+     inkscape:window-width="1600"
+     inkscape:window-height="876"
+     inkscape:window-x="0"
+     inkscape:window-y="24"
+     inkscape:window-maximized="1">
+    <sodipodi:guide
+       orientation="1,0"
+       position="47.142857,662.85714"
+       id="guide3362" />
+    <sodipodi:guide
+       orientation="0,1"
+       position="380.71429,909.28572"
+       id="guide3383" />
+  </sodipodi:namedview>
+  <metadata
+     id="metadata7">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Capa 1"
+     inkscape:groupmode="layer"
+     id="layer1">
+    <image
+       y="596.82874"
+       x="47.142857"
+       id="image3125"
+       xlink:href="file:///home/cristian/Escritorio/rehttpwww_youtube_comwatchvwwhdnujzyqi/001.jpg"
+       height="98.701454"
+       width="131.60193" />
+    <image
+       y="143.07646"
+       x="47.142857"
+       id="image3203"
+       xlink:href="file:///home/cristian/Escritorio/rehttpwww_youtube_comwatchvwwhdnujzyqi/002.jpg"
+       height="98.701454"
+       width="131.60193" />
+    <image
+       y="143.07646"
+       x="537.66644"
+       id="image3359"
+       xlink:href="file:///home/cristian/Escritorio/rehttpwww_youtube_comwatchvwwhdnujzyqi/resultado_000001.png"
+       height="98.701454"
+       width="131.60193" />
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="536.05786"
+       y="425.93735"
+       id="text3385"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3387"
+         x="536.05786"
+         y="425.93735">Reflectancia (R<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan3426">DB</tspan>)</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3389"
+       y="528.17993"
+       x="533.93652"
+       style="font-size:12px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       xml:space="preserve"><tspan
+         y="528.17993"
+         x="533.93652"
+         id="tspan3391"
+         sodipodi:role="line">Luminancia (L<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan3424">DB</tspan>)</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3403"
+       y="363.72882"
+       x="114.64597"
+       style="font-size:10px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       xml:space="preserve"><tspan
+         y="363.72882"
+         x="114.64597"
+         sodipodi:role="line"
+         id="tspan3409">Imagen de fondo de día (DB)</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-size:12px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       x="289.9996"
+       y="373.61606"
+       id="text3416"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan3418"
+         x="289.9996"
+         y="373.61606">Cromaticidad (C<tspan
+   style="font-size:65.00091553%;baseline-shift:sub"
+   id="tspan3422">DB</tspan>)</tspan></text>
+    <text
+       sodipodi:linespacing="125%"
+       id="text3428"
+       y="476.47321"
+       x="279.28534"
+       style="font-size:12px;font-style:normal;font-weight:normal;text-align:center;line-height:125%;letter-spacing:0px;word-spacing:0px;text-anchor:middle;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+       xml:space="preserve"><tspan
+         y="476.47321"
+         x="279.28534"
+         id="tspan3430"
+         sodipodi:role="line">Intensidad (I<tspan
+   id="tspan3432"
+   style="font-size:65.00091553%;baseline-shift:sub">DB</tspan>)</tspan></text>
+    <g
+       id="g5680">
+      <path
+         inkscape:connector-curvature="0"
+         id="path3440"
+         d="m 152.64286,421.71933 83.82356,0"
+         style="fill:#000000;stroke:#666666;stroke-width:3.24563551px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+      <path
+         style="fill:#000000;stroke:#666666;stroke-width:3.24563551px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+         d="m 236.55464,463.63111 0,-83.82356"
+         id="path5678"
+         inkscape:connector-curvature="0" />
+    </g>
+    <image
+       y="372.56433"
+       x="47.142857"
+       id="image3063"
+       xlink:href="file:///home/cristian/Escritorio/rehttpwww_youtube_comwatchvwwhdnujzyqi/000.jpg"
+       height="98.701454"
+       width="131.60193"
+       style="fill:none;stroke:none;stroke-opacity:1;fill-opacity:1;stroke-width:48.70000000000000284;stroke-miterlimit:4;stroke-dasharray:none;stroke-linejoin:miter;stroke-linecap:butt" />
+    <path
+       style="fill:#000000;stroke:#666666;stroke-width:3.24563551px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       d="m 328.7584,473.07647 83.82356,0"
+       id="path3440-5"
+       inkscape:connector-curvature="0" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path5678-0"
+       d="m 486.67018,514.98825 0,-83.82356"
+       style="fill:#000000;stroke:#666666;stroke-width:3.24563551px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <path
+       inkscape:connector-curvature="0"
+       id="path5710"
+       d="m 402.7584,473.07647 83.82356,0"
+       style="fill:#000000;stroke:#666666;stroke-width:3.24563551px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1" />
+    <g
+       id="g3411"
+       transform="translate(138.00657,23.357865)">
+      <rect
+         y="438.77777"
+         x="216.35681"
+         height="21.454531"
+         width="109.07209"
+         id="rect3397"
+         style="fill:#f9f9f9;stroke:#e6e6e6;stroke-width:1.77205443;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
+      <text
+         sodipodi:linespacing="125%"
+         id="text3399"
+         y="454.46155"
+         x="223.24538"
+         style="font-size:14px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#1a1a1a;fill-opacity:1;stroke:none;font-family:Sans"
+         xml:space="preserve"><tspan
+           y="454.46155"
+           x="223.24538"
+           id="tspan3401"
+           sodipodi:role="line">Filtro Bilateral</tspan></text>
+    </g>
+  </g>
+</svg>

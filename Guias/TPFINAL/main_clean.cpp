@@ -268,7 +268,7 @@ void nighttimeEnhacement(
         CImg<double> intensity_night(image.get_channel(2));
 
         CImg<double> intensidad(denighting(intensity_night, ratio, option_gl, option_gh));
-
+        
         cimg_forXY(mascara_seg, x, y){
 
             if (mascara_LoG(x, y) == 1 && aplicar_laplaciano) {
@@ -336,6 +336,8 @@ void nighttimeEnhacement(
     f_stats << "Valor alfa de Intensidad: " << alfa_int << endl;
     f_stats << "Valor alfa de Hue: " << alfa_hue << endl;
     f_stats << "Pendiente saturacion: " << pendiente_saturacion << endl;
+    f_stats << "Option_FS: " << option_fs << endl;
+    f_stats << "Option_FSS: " << option_fss << endl;
 
     f_stats.close();
 

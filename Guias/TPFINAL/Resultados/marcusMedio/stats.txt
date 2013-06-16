@@ -1,7 +1,0 @@
-Nombre del archivo base: marcusMedio.txt
-Psi: -1
-Frecuencia de corte: 1
-Gl: 0.6
-Gh: 25
-C: 0.7
-Pendiente saturacion: 1
