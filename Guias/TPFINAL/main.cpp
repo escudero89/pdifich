@@ -211,7 +211,7 @@ void nighttimeEnhacement(
 
         //Si alfa_int = 0 NO segmentamos, si es distinto de 0 SI segmentamos
         if (alfa_int) {
-            mascara_seg = segmentar(image, nighttime_bg, option_pseg, option_useg);
+            mascara_seg = segmentar(image, nighttime_bg, daytime_bg, contador, option_pseg, option_useg);
         }
 
         /// DEFINIMOS EL LAPLACIANO DEL GAUSSIANO
@@ -311,7 +311,7 @@ void nighttimeEnhacement(
 }
 
 int main(int argc, char *argv[]){
-    
+
     const char* _day_filename = cimg_option("-dayf","img_in/prueba.jpg", "Imagen de entrada");
     const char* _night_filename = cimg_option("-nightf","img_in/prueba.jpg", "Imagen de entrada");
     const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
