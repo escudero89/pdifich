@@ -1,4 +1,4 @@
-//Para compilar: g++ -o tp main.cpp -O0 -lm -lpthread -lX11 -lfftw3
+//Para compilar: g++ -o main main.cpp -O0 -lm -lpthread -lX11 -lfftw3
 
 #include <iostream>
 #include "../../CImg-1.5.4/CImg.h"
@@ -8,6 +8,12 @@
 #include <string>
 #include <cmath>
 #include <cassert>
+
+#if 1
+    #include "segm_marc.h"
+#else
+    #include "segm_cris.h"
+#endif
 
 #define EPSILON 0.1
 
@@ -30,92 +36,6 @@ CImg<double> join_channels(CImg<double> canal_1, CImg<double> canal_2 = CImg<dou
 	return base;
 }
 
-/// Retorno una convolucion de una imagen con un filtro trabajando en el espectro de frec
-CImg<double> get_img_from_filter(CImg<double> base, CImgList<double> filtro) {
-
-    // Obtengo la transformada y su magnitud/fase
-    CImgList<double> fft = base.get_FFT();
-
-    // Multiplico por el filtro
-    cimg_forXY(fft[0], u, v) {
-        complex<double>
-            part1(fft[0](u, v), fft[1](u, v)),
-            part2(filtro[0](u, v), filtro[1](u, v)),
-            resultado = part1 * part2;
-
-        fft[0](u, v) = real(resultado);
-        fft[1](u, v) = imag(resultado);
-    }
-
-    CImg<double> resultado = fft.get_FFT(true)[0];
-
-    return resultado;
-}
-
-
-/// Obtengo la distancia al punto (x, y) desde cada puntos de una matriz
-CImg<double> get_D_matriz(CImg<double> base, int x = -1, int y = -1) {
-
-    CImg<double> D_matriz(base.width(), base.height());
-
-    // Si no especificamos el punto (-1, -1), toma el centro de la matriz
-    if (x == -1 && y == -1) {
-        x = D_matriz.width() / 2;
-        y = D_matriz.height() / 2;
-    }
-
-    cimg_forXY(D_matriz, u, v) {
-        D_matriz(u, v) = pow(pow(u - x, 2) + pow(v - y, 2), 0.5);
-    }
-
-    return D_matriz;
-}
-
-/// Genera el filtro H(u, v) para filtrado homomorfico
-CImgList<> get_H_homomorphic(
-    CImg<double> base,
-    unsigned int cutoff_frecuency,
-    double gamma_l = 0.5,
-    double gamma_h = 2.0,
-    double c = 1.0) {
-
-    CImg<double> H(base.width(), base.height()),
-        D_matriz(get_D_matriz(base));
-
-    cimg_forXY(H, u, v) {
-        double factor = 1 - exp(-c * pow(D_matriz(u, v), 2) / pow(cutoff_frecuency, 2));
-
-        H(u, v) = (gamma_h - gamma_l) * factor + gamma_l;
-    }
-
-    // Y lo deshifteamos
-    H.shift(-H.width()/2, -H.height()/2, 0, 0, 2);
-
-    // La parte imaginaria es cero
-    return (H, H.get_fill(0));
-}
-
-/// Aplica un filtro haciendo filtrado homomorfico
-CImg<double> get_image_homomorphic(CImg<double> base, CImgList<> H) {
-
-    // Una imagen f(x, y) = i(x, y) * r(x, y), por lo que aplicamos log para separarlos
-    CImg<double>
-        base_normalizada(base.get_normalize(1, 100)),
-        logarithm(base_normalizada.get_log()),
-        filtrado;
-
-    // Ahora los tengo separado teoricamente, aplico fourier (esta dentro de la funcion)
-    // Y aplico el filtro S(u, v) = H(u, v) * F_i(u,v) + H(u,v) * F_r(u,v)
-    filtrado = get_img_from_filter(logarithm, H);
-    filtrado.normalize(0, 1);
-
-    // Ahora tengo que volver a como era antes, aplicando exp
-    filtrado.exp();
-
-    return filtrado.get_normalize(0, 255);
-}
-
-
 /// Aplicamos la correccion Psi para expandir oscuros y contraer claros (mejora contraste)
 // Recibe imagen HSI
 CImg<double> correccionPsi(CImg<double> img, double psi = 3){
@@ -132,41 +52,32 @@ CImg<double> correccionPsi(CImg<double> img, double psi = 3){
 
 /// Separa componente de luminancia de componente de reflactancia
 // Solo debe venir la componente de intensidad de la imagen
-CImgList<double> decouplingLR(
-    CImg<double> img, int option_fc, double option_gl, double option_gh, double option_c){
+CImgList<double> decouplingLR(CImg<double> img, double option_gl, double option_gh) {
 
-#if 0 // Homomorfico
-    CImgList<double> f_luminancia(get_H_homomorphic(img, option_fc, option_gl, option_gh, option_c));
-    CImgList<double> f_reflactancia(get_H_homomorphic(img, option_fc, option_gh, option_gl, option_c));
+    const unsigned int VAR_BLUR_MEDIAN = 7;
+    const unsigned int TAMANHO_F_PROMEDIADO = 5;
 
-    CImg<double> luminancia(get_image_homomorphic(img, f_luminancia).get_normalize(0, 255));
-    CImg<double> reflactancia(get_image_homomorphic(img, f_reflactancia).get_normalize(0, 255));
-#endif
+    // FILTRO BILATERAL
 
-#if 1 //Bilateral
-    CImg<double> luminancia(img.get_blur_bilateral(option_gl,option_gh,-33,32, true));
+    CImg<double> luminancia(img.get_blur_bilateral(option_gl,option_gh, -33, 32, true));
     CImg<double> reflactancia(img.width(), img.height(),1,1);
 
-    luminancia.normalize(1,2);
-    img.normalize(1,2);
+    luminancia.normalize(1, 2);
+    img.normalize(1, 2);
 
     cimg_forXY(reflactancia, i, j){
         reflactancia(i,j) = img(i,j) / luminancia(i,j);
     }
 
-    reflactancia.blur_median(7);
+    reflactancia.blur_median(VAR_BLUR_MEDIAN);
 
-    CImg<double> f_promediado(5,5,1,1,1);
-    f_promediado = f_promediado / 25;
-
+    CImg<double> f_promediado(TAMANHO_F_PROMEDIADO, TAMANHO_F_PROMEDIADO, 1, 1, 1);
+    
     reflactancia.convolve(f_promediado);
+    reflactancia /= (pow(TAMANHO_F_PROMEDIADO, 2));
 
     luminancia.normalize(0, 255);
     reflactancia.normalize(0, 255);
-
-#endif
-
-
 
     return (luminancia, reflactancia);
 
@@ -174,19 +85,20 @@ CImgList<double> decouplingLR(
 
 ///Dadas dos imagenes de intensidad una de dia y una de noche, las desacopla en Luminancia y Reflactancia
 /// y luego obtiene el cociente Lday/Lnight
-CImg<double> ratioDayNightBG(CImg<double> daytime, CImg<double> nighttime,
-                             int option_fc, double option_gl, double option_gh, double option_c){
+CImg<double> ratioDayNightBG(
+    CImg<double> daytime, CImg<double> nighttime, double option_gl, double option_gh){
 
-    CImgList<double> LRday(decouplingLR(daytime, option_fc, option_gl, option_gh, option_c));
-    CImgList<double> LRnight(decouplingLR(nighttime, option_fc, option_gl, option_gh, option_c));
+    CImgList<double> LRday(decouplingLR(daytime, option_gl, option_gh));
+    CImgList<double> LRnight(decouplingLR(nighttime, option_gl, option_gh));
+
     CImg<double> ratio(daytime.width(), daytime.height());
 
     LRday[0].normalize(1,2);
     LRnight[0].normalize(1,2);
+
     (LRday, LRnight).display("LRday, LRnight", 0);
 
     cimg_forXY(daytime, x, y){
-        //Obtenemos el ratio
         ratio(x,y) = LRday[0](x,y) / LRnight[0](x,y);
     }
 
@@ -196,12 +108,9 @@ CImg<double> ratioDayNightBG(CImg<double> daytime, CImg<double> nighttime,
 ///Recibimos la imagen de intensidad a mejorar y el ratio calculado anteriormente
 /// Devolvemos la imagen mejorada
 CImg<double> denighting(CImg<double> base, CImg<double> ratio,
-                        int option_fc, double option_gl, double option_gh, double option_c){
+                        double option_gl, double option_gh){
 
-    CImgList<double> LRbase(decouplingLR(base, option_fc, option_gl, option_gh, option_c));
-
-    //CImg<double> f_promediado(7,7,1,1,1);
-    //LRbase[0].convolve(f_promediado);
+    CImgList<double> LRbase(decouplingLR(base, option_gl, option_gh));
 
     //Normalizamos entre 1 y 2 para que no moleste la division por cero
     LRbase[0].normalize(1,2);
@@ -221,63 +130,21 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
     return base;
 }
 
-
-///FUNCION SEGMENTAR:
-///     INPUT:
-///         img1: Imagen de entrada 1 (Formato RGB)
-///         img2: Imagen de entrada 2 (Formato RGB)
-///         tam_suavizado: tamanio de mascara utilizado para suavizar la diferencia de imagenes
-///         umbral_segmentacion: umbral que define que parte pasa y que parte no en la segmentacion
-
-///     OUTPUT:
-///         Mascara booleana con la imagen segmentada
-CImg<bool> segmentar(CImg<double> img1, CImg<double> img2,
-                      unsigned int tam_suavizado = 7,
-                      double umbral_segmentacion=0.3){
-
- //Suavizamos la imagen para hacer la segmentacion menos sensible
- // a detalles
-     CImg<double> filtro_suavizado(tam_suavizado, tam_suavizado, 1, 3, 1);
-     img1.convolve(filtro_suavizado);
-     img2.convolve(filtro_suavizado);
-
- //Creamos una imagen con el valor absoluto de la diferencia de
- //las dos imagenes de entrada.
-     CImg<double> diferencia(abs(img1 - img2));
-
- //Suavizamos nuevamente para eliminar pequenios puntos
-     diferencia.convolve(filtro_suavizado).normalize(0,1);
-
- //Aplicamos umbralizacion
-     CImg<bool> mascara(img1.width(), img1.height(), 1, 1);
-     cimg_forXY(mascara, x, y){
-
-         mascara(x,y) = (sqrt(
-                         pow(diferencia(x,y,0),2)+
-                         pow(diferencia(x,y,1),2)+
-                         pow(diferencia(x,y,2),2)) > umbral_segmentacion) ? 1 : 0;
-     }
-
-     return mascara;
-
-}
-
-
-
 ///Funcion principal que hace todo
 void nighttimeEnhacement(
     const char* images_file,
     double psi,
-    double option_fc,
     double option_gl,
     double option_gh,
-    double option_c,
+    double alfa_int,
+    double alfa_hue,
     double pendiente_saturacion,
     unsigned int tamanho_prom_hue,
     double option_fs,
     double option_fss,
     double option_useg,
-    int option_pseg) {
+    int option_pseg,
+    bool aplicar_laplaciano) {
 
     string nombreFile = string(images_file).substr(0, string(images_file).find(".txt"));
 
@@ -306,6 +173,8 @@ void nighttimeEnhacement(
     f >> day_file;
     f >> night_file;
 
+    /// EMPEZAMOS DESDE ACA EL TRABAJO, ANTES ERA GESTION DE ARCHIVOS
+
     CImg<double> daytime_bg((carpetaInResultado + day_file).c_str());
     CImg<double> nighttime_bg((carpetaInResultado + night_file).c_str());
 
@@ -317,7 +186,7 @@ void nighttimeEnhacement(
 
     CImg<double> ratio(ratioDayNightBG(daytime_bg.get_channel(2),
                                        nighttime_bg.get_channel(2),
-                                       option_fc, option_gl, option_gh, option_c));
+                                       option_gl, option_gh));
 
     //Nesecito que este en RGB para segmentar
     nighttime_bg.HSItoRGB();
@@ -338,123 +207,80 @@ void nighttimeEnhacement(
         CImg<double> original(image);
 
         //SEGMENTAMOS | ENVIAR IMAGENES EN FORMATO RGB
-        //Si C = 0 NO segmentamos, si es distinto de 0 SI segmentamos
+        CImg<bool> mascara_seg(image.width(),image.height(), 1, 1, 0);
 
-        CImg<bool> mascara_seg(image.width(),image.height(),1,1);
-
-        if(option_c == 0){
-          mascara_seg.fill(0);
-        }else{
-          mascara_seg = (segmentar(image, nighttime_bg, option_pseg, option_useg));
+        //Si alfa_int = 0 NO segmentamos, si es distinto de 0 SI segmentamos
+        if (alfa_int) {
+            mascara_seg = segmentar(image, nighttime_bg, option_pseg, option_useg);
         }
 
+        /// DEFINIMOS EL LAPLACIANO DEL GAUSSIANO
         CImg<double> LoG(5, 5, 1, 1, 0);
 
         LoG(0, 2) = -1;
-
-        LoG(1, 1) = -1;
-        LoG(1, 2) = -2;
-        LoG(1, 3) = -1;
-
-        LoG(2, 0) = -1;
-        LoG(2, 1) = -2;
-        LoG(2, 2) = 16;
-        LoG(2, 3) = -2;
-        LoG(2, 4) = -1;
-
-        LoG(3, 1) = -1;
-        LoG(3, 2) = -2;
-        LoG(3, 3) = -1;
-
+        LoG(1, 1) = -1; LoG(1, 2) = -2; LoG(1, 3) = -1;
+        LoG(2, 0) = -1; LoG(2, 1) = -2; LoG(2, 2) = 16; LoG(2, 3) = -2; LoG(2, 4) = -1; 
+        LoG(3, 1) = -1; LoG(3, 2) = -2; LoG(3, 3) = -1;
         LoG(4, 2) = -1;
 
         CImg<bool> mascara_LoG(mascara_seg.get_convolve(LoG).get_threshold(0.5));
+        /// Y OBTENEMOS SU MASCARA FINAL
 
         // TRABAJAMOS CON LA IMAGEN
         image.RGBtoHSI();
         image = correccionPsi(image, psi);
 
-        CImg<double> hue(image.get_channel(0)/*.get_convolve(promediado).get_normalize(0, 359)*/);
-        CImg<double> saturation(image.get_channel(1) /*image.get_channel(1)*/);
+        CImg<double> hue(image.get_channel(0));
+        CImg<double> saturation(image.get_channel(1));
         CImg<double> intensity_night(image.get_channel(2));
 
-
-
-        CImg<double> intensidad(denighting(intensity_night,
-                                           ratio,
-                                           option_fc, option_gl, option_gh, option_c ));
-
-
+        CImg<double> intensidad(denighting(intensity_night, ratio, option_gl, option_gh));
+        
         cimg_forXY(mascara_seg, x, y){
 
-            if (mascara_LoG(x, y) == 1) {
-                intensidad(x, y) = 1;
-                saturation(x, y) = 0;
+            if (mascara_LoG(x, y) == 1 && aplicar_laplaciano) {
                 hue(x, y) = 120;
+                saturation(x, y) = 0;
+                intensidad(x, y) = 1;
 
             } else {
 
-            /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
-            if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
-                intensidad(x, y) = intensity_night(x, y) * option_c +
-                                    intensidad(x,y) * (1.0 - option_c);
-                if(option_c != 1){
-                    saturation(x,y) = saturation(x,y) * option_fss;
+                /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
+                if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
+                    
+                    intensidad(x, y) = 
+                        intensity_night(x, y) * alfa_int + intensidad(x,y) * (1.0 - alfa_int);
+
+                    if (alfa_int != 1){
+                        saturation(x,y) = saturation(x,y) * option_fss;
+                    }
+
+                } else { // background estatico
+
+                    hue(x, y) = daytime_bg_hue(x, y) * alfa_hue + hue(x,y) * (1.0 - alfa_hue);
+
+                    //%% Si alfa_int = 0 como el paper
+                    if (alfa_int != 0) {
+
+                        double satur =
+                            intensity_night(x, y) * option_fs + 
+                            daytime_bg_saturation(x, y) * (1.0 - option_fs);
+                        
+                        // Nos quedamos con la menor saturacion (no inventamos saturacion)
+                        saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
+
+                    } else {
+                        saturation(x,y) = saturation(x,y) * option_fs;
+                    }
                 }
 
-            } else { // background estatico
-                hue(x, y) = daytime_bg_hue(x, y) * option_fc + hue(x,y) * (1.0 - option_fc);
-
-                //%% Si c = 0 como el paper
-                if(option_c != 0){
-                    double satur = intensity_night(x, y) * option_fs + daytime_bg_saturation(x, y) * (1.0 - option_fs);
-                    // Nos quedamos con la menor saturacion (no inventamos saturacion)
-                    saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
-                }else{
-                    saturation(x,y) = saturation(x,y) * option_fs;
-                }
-                // No hay cambios en la intensidad
             }
-
-            }
-            /*
-            hue(x, y) = daytime_bg_hue(x, y) * (1 - mascara_seg(x, y)) + hue(x,y) * mascara_seg(x,y);
-
-            double val = intensidad(x,y) * (1.0 - mascara_seg(x,y)) + intensity_night(x,y) * mascara_seg(x,y) ;
-            intensidad(x,y) = (val > 1) ? 1 : val;
-
-            double satur = intensity_night(x, y) * option_fs + saturation(x, y) * (1.0 - option_fs);
-            satur = (mascara_seg(x, y) == 1) ? saturation(x, y) : satur;
-
-            // Nos quedamos con la menor saturacion (no inventamos saturacion)
-            saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
-            */
         }
-
-		// Hacemos una transformacion lineal sobre la saturacion para disminuirla.
-		// Para hacer la transformacion nos basamos en informacion de intensidad
-		// de la imagen a procesar. Si la intensidad es muy baja, la saturacion tambien
-		// debe serlo. De esta manera atenuamos los falsos colores que se generan
-		// a causa de la poca informacion de color de la imagen de noche.
-        /*saturation.display();
-        cimg_forXY(saturation, x, y) {
-            double intensity_n = (intensity_night(x, y) < option_fs) ? intensity_night(x, y) / option_fs : 1;
-            double val = intensity_n * pendiente_saturacion;
-            saturation(x, y) = (val > 1) ? 1 : val; // evitamos que se vaya a la bosta
-        }
-        (intensity_night, saturation).display();*/
-
-        /// Hago una interpolacion entre la intensidad de noche y la saturacion de noche
-        //saturation = intensity_night * option_fs + saturation * (1.0 - option_fs);
 
         image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
 
         image.save(str_resultado.c_str(), contador);
-
-        //(original, image).display("MARCOUSOSUCOUSOU", 0);
-        //(original.get_RGBtoHSI().get_channel(2), intensidad).display("MARCOUSOSUCOUSOU", 0);
-        //(image.get_RGBtoHSI().get_channel(0), image.get_RGBtoHSI().get_channel(1)).display("MARCOUSOSUCOUSOU", 0);
 
         cout << "Imagen procesada: " << image_file;
         cout << "\tImagen salida: " << "resultado_" << contador << ".png" << endl;
@@ -472,28 +298,27 @@ void nighttimeEnhacement(
 
     f_stats << "Nombre del archivo base: " << images_file << endl;
     f_stats << "Psi: " << psi << endl;
-    f_stats << "Frecuencia de corte: " << option_fc << endl;
     f_stats << "Gl: " << option_gl << endl;
     f_stats << "Gh: " << option_gh << endl;
-    f_stats << "C: " << option_c << endl;
+    f_stats << "Valor alfa de Intensidad: " << alfa_int << endl;
+    f_stats << "Valor alfa de Hue: " << alfa_hue << endl;
     f_stats << "Pendiente saturacion: " << pendiente_saturacion << endl;
+    f_stats << "Option_FS: " << option_fs << endl;
+    f_stats << "Option_FSS: " << option_fss << endl;
 
     f_stats.close();
 
 }
 
 int main(int argc, char *argv[]){
+    
     const char* _day_filename = cimg_option("-dayf","img_in/prueba.jpg", "Imagen de entrada");
     const char* _night_filename = cimg_option("-nightf","img_in/prueba.jpg", "Imagen de entrada");
     const char* _images_filename = cimg_option("-imagesf","images.txt", "Imagen de entrada");
     const double _psi = cimg_option("-psi", -1.0, "Factor de correccion psi");
 
-
     const double _fs = cimg_option("-fs", 0.15, "Factor que maneja la saturacion del fondo de la imagen");
     const double _fss = cimg_option("-fss", 0.2, "Factor que maneja la saturacion de la parte segmentada de la imagen");
-    const double _c = cimg_option("-c", 0.0, "Factor que maneja la intensidad de la parte segmentada");
-    const double _fc = cimg_option("-fc", 0.0, "Factor que maneja el tono del fondo de la imagen");
-
 
     const double _gl = cimg_option("-gl", 0.6, "Gamma Low");
     const double _gh = cimg_option("-gh", 25.0, "Gamma High");
@@ -503,41 +328,43 @@ int main(int argc, char *argv[]){
     const double _umbralSegmentacion = cimg_option("-useg", 0.25, "Umbral de segmentacion");
     const int _promediadoSegmentacion = cimg_option("-pseg", 7, "Tamanio del filtro para suavizar en segmentacion");
 
-    nighttimeEnhacement(_images_filename, _psi, _fc, _gl, _gh, _c, _ps, _tam_hue, _fs,_fss,
-                        _umbralSegmentacion, _promediadoSegmentacion);
+    const double _alfaint = cimg_option("-alfaint", 0.0, "Factor que maneja la intensidad de la parte segmentada");
+    const double _alfahue = cimg_option("-alfahue", 0.0, "Factor que maneja el tono del fondo de la imagen");
 
+    const bool _aplicar_laplaciano = cimg_option("-LoG", false, "Aplica o no el laplaciano");
 
-
+    nighttimeEnhacement(
+        _images_filename,
+        _psi,
+        _gl,
+        _gh,
+        _alfaint,
+        _alfahue,
+        _ps,
+        _tam_hue,
+        _fs,
+        _fss,
+        _umbralSegmentacion,
+        _promediadoSegmentacion,
+        _aplicar_laplaciano);
 
 ///  Para ejecutarlo exactamente segun el paper:
-//    -c 0     (indica que usamos la intensidad de la imagen denightiada)
-//    -fc 0    (indica que usamos el tono de la imagen denightiada)
+//    -alfaint 0     (indica que usamos la intensidad de la imagen denightiada)
+//    -alfahue 0    (indica que usamos el tono de la imagen denightiada)
 //    -fs 0.15 (factor que reduce la saturacion)
 
 ///   Para ejecutarlo con nuestras modificaciones (segmentacion y color de dia):
-//    -c 1    (indica que usamos la intensidad de la imagen original en la parte segmentada)
-//    -fc 1   (indica que usamos el tono de la imagen de dia en las partes fijas)
+//    -alfaint 1    (indica que usamos la intensidad de la imagen original en la parte segmentada)
+//    -alfahue 1   (indica que usamos el tono de la imagen de dia en las partes fijas)
 //    -fs 0   (factor que maneja la saturacion de las partes fijas (fondo) )
 //    -fss 0.2(factor que reduce la saturacion de la parte segmentada)
 
 
 ///    Para ejecutarlo interpolando los dos casos anteriores:
-//    -c 0.3   (indica que usamos un promedio ponderado para la intensidad de la parte segmentada)
-//    -fc 1    (indica que usamos un promedio entre img denightiada e img de dia| es mejor ponerlo a 1 y usar el de dia)
+//    -alfaint 0.3   (indica que usamos un promedio ponderado para la intensidad de la parte segmentada)
+//    -alfahue 1    (indica que usamos un promedio entre img denightiada e img de dia| es mejor ponerlo a 1 y usar el de dia)
 //    -fs 0.15 (factor que reduce la saturacion de la imagen del fondo)
 //    -fss 0.2 (factor que reduce la saturacion de la parte segmentada)
-
-
-
-
-
-
-
-
-
-
-
-
 
     return 0;
 }

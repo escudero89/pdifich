@@ -2,6 +2,7 @@
 *.slo
 *.lo
 *.o
+.fuse_hidden*
 
 # Compiled Dynamic libraries
 *.so
