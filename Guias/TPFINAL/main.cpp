@@ -9,7 +9,7 @@
 #include <cmath>
 #include <cassert>
 
-#if 1
+#if 0
     #include "segm_marc.h"
 #else
     #include "segm_cris.h"
@@ -174,7 +174,6 @@ void nighttimeEnhacement(
     f >> night_file;
 
     /// EMPEZAMOS DESDE ACA EL TRABAJO, ANTES ERA GESTION DE ARCHIVOS
-
     CImg<double> daytime_bg((carpetaInResultado + day_file).c_str());
     CImg<double> nighttime_bg((carpetaInResultado + night_file).c_str());
 
@@ -358,7 +357,6 @@ int main(int argc, char *argv[]){
 //    -alfahue 1   (indica que usamos el tono de la imagen de dia en las partes fijas)
 //    -fs 0   (factor que maneja la saturacion de las partes fijas (fondo) )
 //    -fss 0.2(factor que reduce la saturacion de la parte segmentada)
-
 
 ///    Para ejecutarlo interpolando los dos casos anteriores:
 //    -alfaint 0.3   (indica que usamos un promedio ponderado para la intensidad de la parte segmentada)
