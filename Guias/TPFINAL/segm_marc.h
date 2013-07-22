@@ -63,7 +63,7 @@ CImg<bool> roi(CImg<bool> img, int contador) {
     varianza(img, media_x, media_y, var_x, var_y);
 
     //Transformamos varianza en desvio por un factor de ampliacion de la roi
-    double alfa_roi = 2.5;
+    double alfa_roi = 1.5;
     var_x = sqrt(var_x) * alfa_roi;
     var_y = sqrt(var_y) * alfa_roi;
 
@@ -81,26 +81,26 @@ CImg<bool> roi(CImg<bool> img, int contador) {
     roi_lrx = inf_der_x; //roi lower right y
     roi_lry = inf_der_y; //roi lower right y
 
-/*
- *     //Generamos imagen copia de img pero que permita color, para mostrar ROI
- *     int color[3] = {0, 255, 0};
- *     CImg<unsigned char> img_color(img.width(),img.height(),1,3);
- *
- *     cimg_forXY(img,i,j){
- *         if(img(i,j) == 1){
- *             img_color(i,j,0,0) = (char) 255;
- *             img_color(i,j,0,1) = (char) 255;
- *             img_color(i,j,0,2) = (char) 255;
- *         }
- *     }
- *
- *     //Dibujamos ROI, solo a motivos de control
- *     img_color.draw_rectangle(roi_ulx,
- *                              roi_uly,
- *                              roi_lrx,
- *                              roi_lry,
- *                              color, 1, 2).save("Temp/mascara.png", contador);
- */
+
+     //Generamos imagen copia de img pero que permita color, para mostrar ROI
+     int color[3] = {0, 255, 0};
+     CImg<unsigned char> img_color(img.width(),img.height(),1,3);
+
+     cimg_forXY(img,i,j){
+        if(img(i,j) == 1){
+            img_color(i,j,0,0) = (char) 255;
+             img_color(i,j,0,1) = (char) 255;
+             img_color(i,j,0,2) = (char) 255;
+         }
+     }
+
+     //Dibujamos ROI, solo a motivos de control
+     img_color.draw_rectangle(roi_ulx,
+                              roi_uly,
+                              roi_lrx,
+                              roi_lry,
+                              color, 1, 2).save("Temp/mascara.png", contador);
+
 
 
 
@@ -111,6 +111,39 @@ CImg<bool> roi(CImg<bool> img, int contador) {
 }
 
 
+// Fusiona la mascara que le pasas con una que se forma por la saturacion de la
+// imagen base con el fondo de noche
+CImg<bool> fusionar_con_diff_saturacion(
+  CImg<bool> base,
+  CImg<double> image,
+  CImg<double> sat_old) {
+
+  // Me quedo con su canal de saturacion
+  CImg<double> sat(image.get_RGBtoHSI().get_channel(1));
+
+  // Desenfoco ambas imagenes
+  CImg<double> filtro_suavizado(15, 15, 1, 3, 1);
+
+  sat_old.convolve(filtro_suavizado);
+  sat.convolve(filtro_suavizado);
+
+  // Las umbralizo
+  sat.threshold(sat_old.mean());
+  sat_old.threshold(sat_old.mean());
+
+  // Hago la diferencia
+  sat = abs(sat - sat_old);
+
+  // Umbralizo la saturacion (igual tiene valores 1 y 0)
+  CImg<bool> sat_bool(sat);
+
+  // Recorro y voy acoplando con la mascara ya existente
+  cimg_forXY(base, x, y) {
+  base(x, y) = (base(x, y) == 0 && sat_bool(x, y) == 1) ? 1 : base(x, y);
+  }
+
+  return base;
+}
 
 ///FUNCION SEGMENTAR:
 ///     INPUT:
@@ -141,7 +174,7 @@ CImg<bool> segmentar(
     int original_height = img1.height();
 
     //El valor de esta variable indica cada cuantos frames se recalcula la ROI.
-    int frames_roi = 10;
+    int frames_roi = 6;
 
     //Cada x frames actualizamos la ROI
     if( (contador % frames_roi) != 0){
@@ -168,6 +201,10 @@ CImg<bool> segmentar(
                         pow(diferencia(x, y, 1), 2)+
                         pow(diferencia(x, y, 2), 2) > pow(umbral_segmentacion, 2)) ? 1 : 0;
     }
+
+    // Fusiono con la mascara de saturacion (le paso el canal de saturacion de background night)
+    CImg<double> sat_old(img2.get_RGBtoHSI().get_channel(1));
+    mascara = fusionar_con_diff_saturacion(mascara, img1, sat_old);
 
     //Aplicamos erosion y dilatacion para eliminar puntos espureos
     mascara.erode(9);
