@@ -17,6 +17,8 @@
 
 #define EPSILON 0.1
 
+
+
 using namespace cimg_library;
 using namespace std;
 
@@ -72,7 +74,7 @@ CImgList<double> decouplingLR(CImg<double> img, double option_gl, double option_
     reflactancia.blur_median(VAR_BLUR_MEDIAN);
 
     CImg<double> f_promediado(TAMANHO_F_PROMEDIADO, TAMANHO_F_PROMEDIADO, 1, 1, 1);
-    
+
     reflactancia.convolve(f_promediado);
     reflactancia /= (pow(TAMANHO_F_PROMEDIADO, 2));
 
@@ -219,7 +221,7 @@ void nighttimeEnhacement(
 
         LoG(0, 2) = -1;
         LoG(1, 1) = -1; LoG(1, 2) = -2; LoG(1, 3) = -1;
-        LoG(2, 0) = -1; LoG(2, 1) = -2; LoG(2, 2) = 16; LoG(2, 3) = -2; LoG(2, 4) = -1; 
+        LoG(2, 0) = -1; LoG(2, 1) = -2; LoG(2, 2) = 16; LoG(2, 3) = -2; LoG(2, 4) = -1;
         LoG(3, 1) = -1; LoG(3, 2) = -2; LoG(3, 3) = -1;
         LoG(4, 2) = -1;
 
@@ -235,7 +237,7 @@ void nighttimeEnhacement(
         CImg<double> intensity_night(image.get_channel(2));
 
         CImg<double> intensidad(denighting(intensity_night, ratio, option_gl, option_gh));
-        
+
         cimg_forXY(mascara_seg, x, y){
 
             if (mascara_LoG(x, y) == 1 && aplicar_laplaciano) {
@@ -247,8 +249,8 @@ void nighttimeEnhacement(
 
                 /// Voy a trabajar a parte con la parte segmentada, y la sin segmentar
                 if (mascara_seg(x, y)) { // movimiento (solo cambio intensidad)
-                    
-                    intensidad(x, y) = 
+
+                    intensidad(x, y) =
                         intensity_night(x, y) * alfa_int + intensidad(x,y) * (1.0 - alfa_int);
 
                     if (alfa_int != 1){
@@ -263,9 +265,9 @@ void nighttimeEnhacement(
                     if (alfa_int != 0) {
 
                         double satur =
-                            intensity_night(x, y) * option_fs + 
+                            intensity_night(x, y) * option_fs +
                             daytime_bg_saturation(x, y) * (1.0 - option_fs);
-                        
+
                         // Nos quedamos con la menor saturacion (no inventamos saturacion)
                         saturation(x, y) = (satur > saturation(x, y)) ? saturation(x, y) : satur;
 
@@ -309,6 +311,14 @@ void nighttimeEnhacement(
     f_stats.close();
 
 }
+
+
+//Variables globales
+int roi_ulx = 0; //roi upper left x
+int roi_uly = 0; //roi upper left y
+int roi_lrx = 0; //roi lower right y
+int roi_lry = 0; //roi lower right y
+
 
 int main(int argc, char *argv[]){
 
