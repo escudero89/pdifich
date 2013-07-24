@@ -5,8 +5,7 @@ std::string add_number_to_file(
     std::string cadena,
     std::string extension,
     unsigned int contador,
-    unsigned int cant_zeros = 6
-    ) {
+    unsigned int cant_zeros = 6) {
 
     unsigned int zeros = 0;
 

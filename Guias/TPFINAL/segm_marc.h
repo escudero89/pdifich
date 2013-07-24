@@ -1,3 +1,4 @@
+#include <vector>
 
 void media(CImg<bool> img, int & media_x, int & media_y){
 
@@ -12,7 +13,6 @@ void media(CImg<bool> img, int & media_x, int & media_y){
             m_y += j;
             contador++;
         }
-
 
     }
 
@@ -37,14 +37,12 @@ void varianza(CImg<bool> img, int media_x, int media_y, int &var_x, int &var_y){
             contador++;
         }
 
-
     }
 
     var_x = (int) v_x/contador;
     var_y = (int) v_y/contador;
 
 }
-
 
 extern int roi_ulx; //roi upper left x
 extern int roi_uly; //roi upper left y
@@ -63,7 +61,7 @@ CImg<bool> roi(CImg<bool> img, int contador) {
     varianza(img, media_x, media_y, var_x, var_y);
 
     //Transformamos varianza en desvio por un factor de ampliacion de la roi
-    double alfa_roi = 1.5;
+    double alfa_roi = 1.8;
     var_x = sqrt(var_x) * alfa_roi;
     var_y = sqrt(var_y) * alfa_roi;
 
@@ -74,13 +72,11 @@ CImg<bool> roi(CImg<bool> img, int contador) {
     int inf_der_x = (media_x + var_x) > img.width() ? img.width() : (media_x + var_x);
     int inf_der_y = (media_y + var_y) > img.height() ? img.height() : (media_y + var_y);
 
-
     //Actualizamos variables globales de ROI
     roi_ulx = sup_izq_x; //roi upper left x
     roi_uly = sup_izq_y; //roi upper left y
-    roi_lrx = inf_der_x; //roi lower right y
+    roi_lrx = inf_der_x; //roi lower right x
     roi_lry = inf_der_y; //roi lower right y
-
 
      //Generamos imagen copia de img pero que permita color, para mostrar ROI
      int color[3] = {0, 255, 0};
@@ -102,11 +98,66 @@ CImg<bool> roi(CImg<bool> img, int contador) {
                               color, 1, 2).save("Temp/mascara.png", contador);
 
 
+     CImg<int> img_int(label_cc(img));
 
+     std::vector<int> array;
+     array.resize(img.width() * img.height(), 0);
 
+     unsigned int array_pos = 0;
+
+    for (unsigned int x = sup_izq_x ; x <= inf_der_x; x++) {
+      for (unsigned int y = sup_izq_y ; y <= inf_der_y ; y++) {
+
+          unsigned int img_xy = img_int(x, y);
+
+            // Pertenece a una clase de objeto != 0
+            if (img_xy != 0) {
+              // Me fijo si ya no lo habia guardado
+              bool sin_almacenar = true;
+
+              for (unsigned int k = 0; k <= array_pos ; k++) {
+                if (array[k] == img_xy) {
+                  sin_almacenar = false;
+                  break;
+                }
+              }
+
+              if (sin_almacenar) {
+                array[array_pos] = img_xy;
+                array_pos++;
+              }
+            }
+      }
+    }
+
+      // Vuelvo a recorrer por fuera de los limites
+    cimg_forXY(img_int, x, y) {
+        // Pertenece a una clase de objeto != 0
+        if (img_int(x, y) != 0) {
+          // Y si estoy fuera de los limites
+          if (!(x >= sup_izq_x && x <= inf_der_x && y >= sup_izq_y && y <= inf_der_y)) {
+              bool inside = false;
+              
+              // Reviso si ya tenia el elemento dentro del roi
+              for (unsigned int x_arr = 0 ; x_arr <= array_pos ; x_arr++) {
+                if (array[x_arr] == img_int(x, y)) {
+                  inside = true;
+                  break;
+                }
+              }
+
+              // Si estaba el objeto en el roi, lo dejo en uno
+              if (inside) {
+                img(x, y) = 1;
+              } else {
+                img(x, y) = 0;
+              }
+            }
+        }
+    }
 
     // Retornamos la ROI cropeada de la img original
-    return img.get_crop(sup_izq_x, sup_izq_y, inf_der_x, inf_der_y);
+    return img;//.get_crop(sup_izq_x, sup_izq_y, inf_der_x, inf_der_y);
 
 }
 
@@ -174,7 +225,7 @@ CImg<bool> segmentar(
     int original_height = img1.height();
 
     //El valor de esta variable indica cada cuantos frames se recalcula la ROI.
-    int frames_roi = 6;
+    int frames_roi = 1;
 
     //Cada x frames actualizamos la ROI
     if( (contador % frames_roi) != 0){
@@ -189,7 +240,6 @@ CImg<bool> segmentar(
 
     //Creamos una imagen con el valor absoluto de la diferencia de las dos imagenes de entrada.
     CImg<double> diferencia(abs(img1 - img2));
-
 
     //Suavizamos nuevamente para homogenenizar
     diferencia.convolve(filtro_suavizado).normalize(0,1);
@@ -207,20 +257,22 @@ CImg<bool> segmentar(
     mascara = fusionar_con_diff_saturacion(mascara, img1, sat_old);
 
     //Aplicamos erosion y dilatacion para eliminar puntos espureos
-    mascara.erode(9);
-    mascara.dilate(9);
+    mascara.erode(20);
+    mascara.dilate(20);
 
     //Si es ==  0, actualizamos ROI
     if( (contador % frames_roi) == 0){
         mascara = roi(mascara, contador);
     }
 
+    CImg<bool> mascara_reconstruida(mascara);
+/*
     //Reconstruimos mascara al tamanio original llenando con ceros
     CImg<bool> mascara_reconstruida(original_width,original_height,1,1,0);
     cimg_forXY(mascara,i,j){
         mascara_reconstruida(roi_ulx + i, roi_uly + j) = mascara(i,j);
     }
-
+*/
 /*
     // Generamos imagen copia de mascara_reconstruida pero que permita color,
     // para mostrar un rectangulo de color con la ROI
