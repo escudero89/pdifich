@@ -163,7 +163,7 @@ CImg<bool> segmentar(
     unsigned int tam_suavizado = 7,
     double umbral_segmentacion = 0.3){
 
-    std::cout << "\n>> Usando la funcion de Segmentacion de: MARCUS <<\n";
+    std::cout << "\n>> Usando la funcion de Segmentacion de: segm_marc_veloz.h <<\n";
 
     // Por alguna razon el contador arranca desde 1 en el main. Aca es necesario
     // que arranque en cero.
@@ -207,8 +207,8 @@ CImg<bool> segmentar(
     mascara = fusionar_con_diff_saturacion(mascara, img1, sat_old);
 
     //Aplicamos erosion y dilatacion para eliminar puntos espureos
-    mascara.erode(21);
-    mascara.dilate(23);
+    mascara.erode(19);
+    mascara.dilate(13);
 
     //Si es ==  0, actualizamos ROI
     if( (contador % frames_roi) == 0){

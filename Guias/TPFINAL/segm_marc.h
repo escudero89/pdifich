@@ -61,7 +61,7 @@ CImg<bool> roi(CImg<bool> img, int contador) {
     varianza(img, media_x, media_y, var_x, var_y);
 
     //Transformamos varianza en desvio por un factor de ampliacion de la roi
-    double alfa_roi = 1.8;
+    double alfa_roi = 1.5;
     var_x = sqrt(var_x) * alfa_roi;
     var_y = sqrt(var_y) * alfa_roi;
 
@@ -78,7 +78,7 @@ CImg<bool> roi(CImg<bool> img, int contador) {
     roi_lrx = inf_der_x; //roi lower right x
     roi_lry = inf_der_y; //roi lower right y
 
-     //Generamos imagen copia de img pero que permita color, para mostrar ROI
+//   Generamos imagen copia de img pero que permita color, para mostrar ROI
      int color[3] = {0, 255, 0};
      CImg<unsigned char> img_color(img.width(),img.height(),1,3);
 
@@ -137,7 +137,7 @@ CImg<bool> roi(CImg<bool> img, int contador) {
           // Y si estoy fuera de los limites
           if (!(x >= sup_izq_x && x <= inf_der_x && y >= sup_izq_y && y <= inf_der_y)) {
               bool inside = false;
-              
+
               // Reviso si ya tenia el elemento dentro del roi
               for (unsigned int x_arr = 0 ; x_arr <= array_pos ; x_arr++) {
                 if (array[x_arr] == img_int(x, y)) {
@@ -214,7 +214,7 @@ CImg<bool> segmentar(
     unsigned int tam_suavizado = 7,
     double umbral_segmentacion = 0.3){
 
-    std::cout << "\n>> Usando la funcion de Segmentacion de: MARCUS <<\n";
+    std::cout << "\n>> Usando la funcion de Segmentacion de: ROI mejorado <<\n";
 
     // Por alguna razon el contador arranca desde 1 en el main. Aca es necesario
     // que arranque en cero.
@@ -266,37 +266,8 @@ CImg<bool> segmentar(
     }
 
     CImg<bool> mascara_reconstruida(mascara);
-/*
-    //Reconstruimos mascara al tamanio original llenando con ceros
-    CImg<bool> mascara_reconstruida(original_width,original_height,1,1,0);
-    cimg_forXY(mascara,i,j){
-        mascara_reconstruida(roi_ulx + i, roi_uly + j) = mascara(i,j);
-    }
-*/
-/*
-    // Generamos imagen copia de mascara_reconstruida pero que permita color,
-    // para mostrar un rectangulo de color con la ROI
-    int color[3] = {0, 255, 0};
-    CImg<unsigned char> mascara_reconstruida_color(mascara_reconstruida.width(),
-                                                   mascara_reconstruida.height(),1,3);
-    cimg_forXY(mascara_reconstruida,i,j){
-        if(mascara_reconstruida(i,j) == 1){
-            mascara_reconstruida_color(i,j,0,0) = 255;
-            mascara_reconstruida_color(i,j,0,1) = 255;
-            mascara_reconstruida_color(i,j,0,2) = 255;
-        }
-    }
 
-    //Dibujamos ROI, solo a motivos de control
-    mascara_reconstruida_color.draw_rectangle(roi_ulx, roi_uly, roi_lrx, roi_lry, color, 1, 2);
-
-
-
-    // Guardamos la mascara
-    (mascara_reconstruida_color).save("Temp/mascara.png", contador);
-*/
-
-    (mascara_reconstruida * 255).save("Temp/mascara_reconstruida.png", contador);
+//    (mascara_reconstruida * 255).save("Temp/mascara_reconstruida.png", contador);
 
     return mascara_reconstruida;
 
