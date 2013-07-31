@@ -9,7 +9,7 @@
 #include <cmath>
 #include <cassert>
 
-#if 0
+#if 1
     #include "segm_marc.h"
 #else
     #include "segm_cris.h"
