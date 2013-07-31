@@ -12,7 +12,7 @@
 #if 1
     #include "segm_marc.h"
 #else
-    #include "segm_cris.h"
+    #include "segm_marc_veloz.h"
 #endif
 
 #define EPSILON 0.1
@@ -116,7 +116,15 @@ CImg<double> denighting(CImg<double> base, CImg<double> ratio,
 
     //Normalizamos entre 1 y 2 para que no moleste la division por cero
     LRbase[0].normalize(1,2);
+
+    //LRbase[1].display();
+
+    CImg<double> high_boost = abs(LRbase[1] - LRbase[1].get_blur(5));
+    LRbase[1] = LRbase[1] + 3.5 * high_boost;
+
     LRbase[1].normalize(1,2);
+
+    //LRbase[1].display();
 
     cimg_forXY(LRbase[0],x,y){
         //En este paso hacemos el producto entre la reflactancia de la imagen a mejorar
@@ -189,7 +197,7 @@ void nighttimeEnhacement(
                                        nighttime_bg.get_channel(2),
                                        option_gl, option_gh));
 
-    //Nesecito que este en RGB para segmentar
+    //Necesito que este en RGB para segmentar
     nighttime_bg.HSItoRGB();
 
     unsigned int contador = 1;
@@ -241,7 +249,7 @@ void nighttimeEnhacement(
 
             if (mascara_LoG(x, y) == 1 && aplicar_laplaciano) {
                 hue(x, y) = 120;
-                saturation(x, y) = 0;
+                saturation(x, y) = 1;
                 intensidad(x, y) = 1;
 
             } else {
@@ -280,7 +288,7 @@ void nighttimeEnhacement(
 
         image = join_channels(hue, saturation, intensidad);
         image.HSItoRGB();
-
+        image.equalize(256);
         image.save(str_resultado.c_str(), contador);
 
         cout << "Imagen procesada: " << image_file;
