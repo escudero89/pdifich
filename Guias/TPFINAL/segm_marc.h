@@ -16,9 +16,8 @@ void media(CImg<bool> img, int & media_x, int & media_y){
 
     }
 
-    media_x = (int) m_x/contador;
-    media_y = (int) m_y/contador;
-
+    media_x = (contador > 0) ? (int) m_x/contador : 0;
+    media_y = (contador > 0) ? (int) m_y/contador : 0;
 
 }
 
@@ -39,8 +38,8 @@ void varianza(CImg<bool> img, int media_x, int media_y, int &var_x, int &var_y){
 
     }
 
-    var_x = (int) v_x/contador;
-    var_y = (int) v_y/contador;
+    var_x = (contador > 0) ? (int) v_x/contador : 0;
+    var_y = (contador > 0) ? (int) v_y/contador : 0;
 
 }
 
